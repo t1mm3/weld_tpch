@@ -173,7 +173,23 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
 
   WeldQuery query(conf, program.str(), std::move(inputs));
 
+  auto resources = initQuery(nrThreads);
   query.run();
+
+  using namespace types;
+  auto& result = resources.query->result;
+  auto retAttr = result->addAttribute("l_returnflag", sizeof(Char<1>));
+  auto statusAttr = result->addAttribute("l_linestatus", sizeof(Char<1>));
+  auto qtyAttr = result->addAttribute("sum_qty", sizeof(Numeric<12, 2>));
+  auto base_priceAttr =
+     result->addAttribute("sum_base_price", sizeof(Numeric<12, 2>));
+  auto disc_priceAttr =
+     result->addAttribute("sum_disc_price", sizeof(Numeric<12, 2>));
+  auto chargeAttr = result->addAttribute("sum_charge", sizeof(Numeric<12, 2>));
+  auto count_orderAttr = result->addAttribute("count_order", sizeof(int64_t));
+
+  leaveQuery(nrThreads);
+   return move(resources.query);
 
 #if 0
 using namespace types;
