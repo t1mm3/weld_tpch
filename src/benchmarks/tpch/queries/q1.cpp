@@ -11,113 +11,16 @@
 #include "vectorwise/VectorAllocator.hpp"
 #include <deque>
 #include <iostream>
-#include <weld.h>
 
 using namespace runtime;
 using namespace std;
 using vectorwise::primitives::Char_1;
 using vectorwise::primitives::hash_t;
 
-struct WeldConfig {
-  weld_conf_t value;
 
-  WeldConfig(size_t threads) {
-    value = weld_conf_new();
-    weld_conf_set(value, "weld.threads", std::to_string(threads).c_str());
-  }
-
-  ~WeldConfig() {
-    weld_conf_free(value);
-  }
-};
-
-struct IWeldRelation {
-  weld_value_t value;
-  bool has_value = false;
-
-
-  struct weld_vector {
-      void *data;
-      size_t length;
-  };
-
-  virtual ~IWeldRelation() {
-    if (has_value) {
-      weld_value_free(value);
-    }
-  }
-};
-
-struct WeldInRelation : IWeldRelation {
-  WeldInRelation(size_t card, const std::vector<void*>& columns) {
-    for (auto& c : columns) {
-      vecs.push_back(weld_vector {c, card});
-    }
-
-    value = weld_value_new(&vecs[0]);
-  }
-
-private:
-  std::vector<weld_vector> vecs;
-};
-
-#include <sstream>
-
-struct WeldQuery {
-  weld_module_t module;
-  WeldConfig& config;
-  std::unique_ptr<WeldInRelation> input; 
-  weld_context_t context;
-
-  WeldQuery(WeldConfig& conf, const std::string& q,
-      std::unique_ptr<WeldInRelation>&& input) : config(conf), input(std::move(input)) {
-    weld_error_t err = weld_error_new();
-    module = weld_module_compile(q.c_str(), config.value, err);
-    if (weld_error_code(err)) {
-      const char *msg = weld_error_message(err);
-      printf("Error message: %s\n", msg);
-      exit(1);
-    }
-    weld_error_free(err);
-
-    context = weld_context_new(config.value);
-  }
-
-  ~WeldQuery() {
-    weld_context_free(context);
-    weld_module_free(module);
-  }
-
-  weld_value_t run() {
-    weld_error_t err = weld_error_new();
-    auto r = weld_module_run(module, context, input ? input->value : nullptr, err);
-    if (weld_error_code(err)) {
-      const char *msg = weld_error_message(err);
-      printf("Error message: %s\n", msg);
-      exit(1);
-    }
-    weld_error_free(err);
-    return r;
-  }
-};
-
-std::string mkStr(const std::vector<std::string>& strs)
-{
-  std::ostringstream r;
-  for (auto& s : strs) {
-    r << s;
-  }
-  return r.str();
-}
-
-std::unique_ptr<runtime::Query> q1_weld(Database& db,
+WeldQuery* q1_weld_prepare(Database& db,
   size_t nrThreads)
 {
-#if 0
-  l_returnflag: vec[i8], l_linestatus: vec[i8], l_quantity: vec[i64],
-  l_ep: vec[i64], l_discount: vec[i64], l_shipdate: vec[i32], l_tax: vec[i64]
-#endif
-
   types::Date c1 = types::Date::castString("1998-09-02");
   std::string one = std::to_string(types::Numeric<12, 2>::castString("1.00").value) + "l";
 
@@ -159,8 +62,6 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
   
   program << s;
 
-  WeldConfig conf(nrThreads);
-
   auto& li = db["lineitem"];
 
   auto inputs = std::make_unique<WeldInRelation>(li.nrTuples, std::vector<void*> {
@@ -173,10 +74,14 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
     li["l_tax"].data<types::Numeric<12, 2>>()
   });
 
-  WeldQuery query(conf, program.str(), std::move(inputs));
+  return new WeldQuery(nrThreads, program.str(), std::move(inputs));
+}
 
+std::unique_ptr<runtime::Query> q1_weld(Database& db,
+  size_t nrThreads, WeldQuery* q)
+{
   auto resources = initQuery(nrThreads);
-  auto res_val = query.run();
+  auto res_val = q->run();
 
   // translate result
   struct Result {
@@ -215,24 +120,10 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
   auto count_orderAttr = result->addAttribute("count_order", sizeof(int64_t));
 
   leaveQuery(nrThreads);
-   return move(resources.query);
 
-#if 0
-using namespace types;
-using namespace std;
-types::Date c1 = types::Date::castString("1998-09-02");
-types::Numeric<12, 2> one = types::Numeric<12, 2>::castString("1.00");
-auto& li = db["lineitem"];
-auto l_returnflag = li["l_returnflag"].data<types::Char<1>>();
-auto l_linestatus = li["l_linestatus"].data<types::Char<1>>();
-auto l_extendedprice = li["l_extendedprice"].data<types::Numeric<12, 2>>();
-auto l_discount = li["l_discount"].data<types::Numeric<12, 2>>();
-auto l_tax = li["l_tax"].data<types::Numeric<12, 2>>();
-auto l_quantity = li["l_quantity"].data<types::Numeric<12, 2>>();
-auto l_shipdate = li["l_shipdate"].data<types::Date>();
+  weld_value_free(res_val);
 
-  weld_vector v;
-#endif
+  return move(resources.query);
 }
 
 //  select

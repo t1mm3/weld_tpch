@@ -91,15 +91,19 @@ int main(int argc, char* argv[]) {
                           escape(&result);
                        },
                        repetitions);
-   if (q.count("1w"))
+   if (q.count("1w")) {
+      auto w = q1_weld_prepare(tpch, nrThreads);
       e.timeAndProfile("q1 weld      ", nrTuples(tpch, {"lineitem"}),
                        [&]() {
                           if (clearCaches) clearOsCaches();
                           auto result =
-                              q1_weld(tpch, nrThreads);
+                              q1_weld(tpch, nrThreads, w);
                           escape(&result);
                        },
                        repetitions);
+      delete w;    
+   }
+
    if (q.count("3h"))
       e.timeAndProfile("q3 hyper     ",
                        nrTuples(tpch, {"customer", "orders", "lineitem"}),

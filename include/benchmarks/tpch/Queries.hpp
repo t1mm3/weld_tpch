@@ -41,9 +41,112 @@ struct Q1Builder : public Query, private vectorwise::QueryBuilder {
 std::unique_ptr<runtime::Query>
 q1_hyper(runtime::Database& db,
          size_t nrThreads = std::thread::hardware_concurrency());
+
+
+#include <weld.h>
+
+struct WeldConfig {
+  weld_conf_t value;
+
+  WeldConfig(size_t threads) {
+    value = weld_conf_new();
+    weld_conf_set(value, "weld.threads", std::to_string(threads).c_str());
+  }
+
+  ~WeldConfig() {
+    weld_conf_free(value);
+  }
+};
+
+struct IWeldRelation {
+  weld_value_t value;
+  bool has_value = false;
+
+
+  struct weld_vector {
+      void *data;
+      size_t length;
+  };
+
+  virtual ~IWeldRelation() {
+    if (has_value) {
+      weld_value_free(value);
+    }
+  }
+};
+
+struct WeldInRelation : IWeldRelation {
+  WeldInRelation(size_t card, const std::vector<void*>& columns) {
+    for (auto& c : columns) {
+      vecs.push_back(weld_vector {c, card});
+    }
+
+    value = weld_value_new(&vecs[0]);
+  }
+
+private:
+  std::vector<weld_vector> vecs;
+};
+
+#include <sstream>
+
+struct WeldQuery {
+  weld_module_t module;
+  WeldConfig config;
+  std::unique_ptr<WeldInRelation> input; 
+  weld_context_t context;
+
+  WeldQuery(size_t threads, const std::string& q,
+      std::unique_ptr<WeldInRelation>&& input) : config(threads), input(std::move(input)) {
+    weld_error_t err = weld_error_new();
+    module = weld_module_compile(q.c_str(), config.value, err);
+    if (weld_error_code(err)) {
+      const char *msg = weld_error_message(err);
+      printf("Error message: %s\n", msg);
+      exit(1);
+    }
+    weld_error_free(err);
+
+    context = weld_context_new(config.value);
+  }
+
+  ~WeldQuery() {
+    weld_context_free(context);
+    weld_module_free(module);
+  }
+
+  weld_value_t run() {
+    weld_error_t err = weld_error_new();
+    auto r = weld_module_run(module, context, input ? input->value : nullptr, err);
+    if (weld_error_code(err)) {
+      const char *msg = weld_error_message(err);
+      printf("Error message: %s\n", msg);
+      exit(1);
+    }
+    weld_error_free(err);
+    return r;
+  }
+};
+
+inline std::string mkStr(const std::vector<std::string>& strs)
+{
+  std::ostringstream r;
+  for (auto& s : strs) {
+    r << s;
+  }
+  return r.str();
+}
+
+
+
+WeldQuery* q1_weld_prepare(runtime::Database& db,
+  size_t nrThreads);
+
 std::unique_ptr<runtime::Query>
 q1_weld(runtime::Database& db,
-         size_t nrThreads = std::thread::hardware_concurrency());
+         size_t nrThreads,
+         WeldQuery* q);
+
 std::unique_ptr<runtime::Query>
 q1_vectorwise(runtime::Database& db,
               size_t nrThreads = std::thread::hardware_concurrency(),
