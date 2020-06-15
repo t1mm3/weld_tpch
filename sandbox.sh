@@ -85,6 +85,12 @@ if [[ ! -e $BASE/weld_tpch/is_installed ]]; then
 	cmake -DCMAKE_CXX_FLAGS="-Wno-error=deprecated-copy" -DCMAKE_INSTALL_PREFIX=$BASE/weld_tpch/install -DCMAKE_BUILD_TYPE=Release $BASE/weld_tpch/src -DTBB_ROOT_DIR=$BASE/tbb/install -DTBBROOT=$BASE/tbb/install -DTBB_INSTALL_DIR=$BASE/tbb/install -DTBB_LIBRARY=$BASE/tbb/install/lib -DWELD_HOME:STRING=$WELD_HOME -DWELD_INCLUDE:STRING=$WELD_HOME/install/include -DWELD_LIBRARY:STRING=$WELD_HOME/install/lib || exit 1
 	make -j$N || exit 1
 	make install || exit 1
+
+	mkdir -p $BASE/weld_tpch/debug || exit 1
+	cd $BASE/weld_tpch/debug || exit 1
+	cmake -DCMAKE_CXX_FLAGS="-Wno-error=deprecated-copy" -DCMAKE_BUILD_TYPE=Debug $BASE/weld_tpch/src -DTBB_ROOT_DIR=$BASE/tbb/install -DTBBROOT=$BASE/tbb/install -DTBB_INSTALL_DIR=$BASE/tbb/install -DTBB_LIBRARY=$BASE/tbb/install/lib -DWELD_HOME:STRING=$WELD_HOME -DWELD_INCLUDE:STRING=$WELD_HOME/install/include -DWELD_LIBRARY:STRING=$WELD_HOME/install/lib || exit 1
+	make -j$N || exit 1
+
 	mkdir $BASE/weld_tpch/is_installed
 fi
 
