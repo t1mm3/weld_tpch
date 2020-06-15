@@ -10,6 +10,70 @@
 
 using namespace runtime;
 using namespace std;
+
+
+
+WeldQuery* q6_weld_prepare(Database& db,
+  size_t nrThreads)
+{
+  auto c1 = types::Date::castString("1994-01-01");
+  auto c2 = types::Date::castString("1995-01-01");
+  auto c3 = types::Numeric<12, 2>::castString("0.05");
+  auto c4 = types::Numeric<12, 2>::castString("0.07");
+  auto c5 = types::Integer(24);
+
+  std::ostringstream program;
+
+  program << "|l_shipdate: vec[i32], l_discount: vec[i64], l_quantity: vec[i64], l_ep: vec[i64]|"
+"    result(for("
+"        map("
+"            filter("
+"                zip(l_shipdate, l_discount, l_quantity, l_ep), ";
+
+  program << 
+"                |x| x.$0 >= " << c1.value << " && x.$0 < " << c2.value << " && x.$1 >= " << c3.value << "l && x.$1 <= " << c4.value << "l && x.$2 < " << c5.value << "l";
+  program <<
+"            ), |x| x.$1 * x.$3"
+"        ), "
+"        merger[i64,+], "
+"        |b,i,x| merge(b,x)"
+"    ))";
+
+  auto& li = db["lineitem"];
+
+  auto inputs = std::make_unique<WeldInRelation>(li.nrTuples, std::vector<void*> {
+    li["l_shipdate"].data<types::Date>(),
+    li["l_discount"].data<types::Numeric<12, 2>>(),
+    li["l_quantity"].data<types::Numeric<12, 2>>(),
+    li["l_extendedprice"].data<types::Numeric<12, 2>>(),
+  });
+
+  return new WeldQuery(nrThreads, program.str(), std::move(inputs));
+}
+
+Relation q6_weld(Database& db,
+  size_t nrThreads, WeldQuery* q)
+{
+  Relation result;
+  result.insert("revenue", make_unique<algebra::Numeric>(12, 4));
+
+  auto res_val = q->run();
+
+  auto wresult = (int64_t*)weld_value_data(res_val);
+
+  printf("q6: %lld\n", *wresult);
+
+
+  weld_value_free(res_val);
+
+  auto& rev = result["revenue"].template typedAccessForChange<int64_t>();
+  rev.reset(1);
+  rev.push_back(*wresult);
+  result.nrTuples = 1;
+  return result;
+}
+
+
 NOVECTORIZE Relation q6_hyper(Database& db, size_t /*nrThreads*/) {
    Relation result;
    result.insert("revenue", make_unique<algebra::Numeric>(12, 4));

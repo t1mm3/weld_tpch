@@ -10,39 +10,6 @@
 #include "vectorwise/Query.hpp"
 #include "vectorwise/QueryBuilder.hpp"
 
-struct Q1Builder : public Query, private vectorwise::QueryBuilder {
-   enum {
-      sel_date,
-      sel_date_grouped,
-      selScat,
-      result_proj_minus,
-      result_proj_plus,
-      disc_price,
-      charge,
-      returnflag,
-      linestatus,
-      sum_qty,
-      sum_base_price,
-      sum_disc_price,
-      sum_charge,
-      count_order
-   };
-   struct Q1 {
-      types::Numeric<12, 2> one = types::Numeric<12, 2>::castString("1.00");
-      types::Date c1 = types::Date::castString("1998-09-02");
-      std::unique_ptr<vectorwise::Operator> rootOp;
-   };
-   Q1Builder(runtime::Database& db, vectorwise::SharedStateManager& shared,
-             size_t size = 1024)
-       : QueryBuilder(db, shared, size) {}
-   std::unique_ptr<Q1> getQuery();
-};
-
-std::unique_ptr<runtime::Query>
-q1_hyper(runtime::Database& db,
-         size_t nrThreads = std::thread::hardware_concurrency());
-
-
 #include <weld.h>
 
 struct WeldConfig {
@@ -146,6 +113,51 @@ std::unique_ptr<runtime::Query>
 q1_weld(runtime::Database& db,
          size_t nrThreads,
          WeldQuery* q);
+
+
+
+WeldQuery* q6_weld_prepare(runtime::Database& db,
+  size_t nrThreads);
+
+runtime::Relation
+q6_weld(runtime::Database& db,
+         size_t nrThreads,
+         WeldQuery* q);
+
+
+
+
+struct Q1Builder : public Query, private vectorwise::QueryBuilder {
+   enum {
+      sel_date,
+      sel_date_grouped,
+      selScat,
+      result_proj_minus,
+      result_proj_plus,
+      disc_price,
+      charge,
+      returnflag,
+      linestatus,
+      sum_qty,
+      sum_base_price,
+      sum_disc_price,
+      sum_charge,
+      count_order
+   };
+   struct Q1 {
+      types::Numeric<12, 2> one = types::Numeric<12, 2>::castString("1.00");
+      types::Date c1 = types::Date::castString("1998-09-02");
+      std::unique_ptr<vectorwise::Operator> rootOp;
+   };
+   Q1Builder(runtime::Database& db, vectorwise::SharedStateManager& shared,
+             size_t size = 1024)
+       : QueryBuilder(db, shared, size) {}
+   std::unique_ptr<Q1> getQuery();
+};
+
+std::unique_ptr<runtime::Query>
+q1_hyper(runtime::Database& db,
+         size_t nrThreads = std::thread::hardware_concurrency());
 
 std::unique_ptr<runtime::Query>
 q1_vectorwise(runtime::Database& db,

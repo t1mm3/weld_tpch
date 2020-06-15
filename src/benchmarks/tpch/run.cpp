@@ -55,9 +55,9 @@ int main(int argc, char* argv[]) {
    bool clearCaches = false;
    if (argc > 3) nrThreads = atoi(argv[3]);
 
-   std::unordered_set<std::string> q = {"1h", "1v", "3h", "3v", "5h",  "5v",
-                                        "6h", "6v", "9h", "9v", "18h", "18v",
-                                        "1w"};
+   std::unordered_set<std::string> q = {"1h", "1v", //"3h", "3v", "5h",  "5v",
+                                        "6h", "6v", "9h", "9v", // "18h", "18v",
+                                        "1w", "6w"};
 
    if (auto v = std::getenv("vectorSize")) vectorSize = atoi(v);
    if (auto v = std::getenv("SIMDhash")) conf.useSimdHash = atoi(v);
@@ -160,6 +160,18 @@ int main(int argc, char* argv[]) {
                           escape(&result);
                        },
                        repetitions);
+   if (q.count("6w")) {
+      auto w = q6_weld_prepare(tpch, nrThreads);
+      e.timeAndProfile("q6 weld      ", nrTuples(tpch, {"lineitem"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q6_weld(tpch, nrThreads, w);
+                          escape(&result);
+                       },
+                       repetitions);
+      delete w;    
+   }
    if (q.count("9h"))
       e.timeAndProfile("q9 hyper     ",
                        nrTuples(tpch, {"nation", "supplier", "part", "partsupp",
