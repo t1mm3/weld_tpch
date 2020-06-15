@@ -113,10 +113,24 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
   types::Numeric<12, 2> one = types::Numeric<12, 2>::castString("1.00");
 
   std::ostringstream program;
-  program << "|l_returnflag:vec[i8], l_linestatus:vec[i8]|";
-  program << "filter("
-    << "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax), "
-    << "|e| e.$5 <= " << c1.value << ")";
+  program << "|"
+    << "l_returnflag:vec[i8],"
+    << "l_linestatus:vec[i8],"
+    << "l_quantity:vec[i64],"
+    << "l_extendedprice:vec[i64],"
+    << "l_discount:vec[i64],"
+    << "l_shipdate:vec[i32],"
+    << "l_tax:vec[i64]"
+    << "|";
+
+  std::string main;
+  main = "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax)";
+  main = "filter(" + main + ", |e| e.$5 <= " + std::to_string(c1.value) + ")";
+
+
+  // dictmerger({(i8,i8)}, {i64,i64,i64,i64,i64,i64}, +)
+
+  program << main;
 
   WeldConfig conf(nrThreads);
 

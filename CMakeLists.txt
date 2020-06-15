@@ -6,7 +6,7 @@ else()
   set(LINUX )
 endif()
 
-ADD_DEFINITIONS(-Werror=deprecated-copy)
+ADD_DEFINITIONS(-g -Werror=deprecated-copy)
 
 if(LINUX)
 set(CMAKE_C_COMPILER gcc)
