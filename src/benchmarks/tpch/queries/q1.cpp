@@ -102,11 +102,16 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
 
   auto wresult = (Result*)weld_value_data(res_val);
 
+#ifdef PRINT_RESULTS
   for (size_t i=0; i<wresult->num_groups; i++) {
     auto& grp = wresult->groups[i];
-    printf("%c %c\n", grp.returnflag, grp.linestatus);
+    printf("%c %c %lld %lld %lld %lld %lld %lld\n",
+      grp.returnflag, grp.linestatus,
+      grp.sum_quant, grp.count,
+      grp.sum_ext_price, grp.sum_discount,
+      grp.sum_disc_price, grp.sum_charge);
   }
-
+#endif
   using namespace types;
   auto& result = resources.query->result;
   auto retAttr = result->addAttribute("l_returnflag", sizeof(Char<1>));

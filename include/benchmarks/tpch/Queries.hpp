@@ -125,7 +125,7 @@ q6_weld(runtime::Database& db,
          WeldQuery* q);
 
 
-
+#define PRINT_RESULTS
 
 struct Q1Builder : public Query, private vectorwise::QueryBuilder {
    enum {
