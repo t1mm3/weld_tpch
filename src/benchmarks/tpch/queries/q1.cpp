@@ -138,7 +138,7 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
     "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax)");
   s = mkStr({"filter(", s, ", |e| e.$5 <= ", std::to_string(c1.value), ")"});
 
-  s = mkStr({"let x = for(", s, ", b, |b,i,e| "});
+  s = mkStr({"let x = result(for(", s, ", b, |b,i,e| "});
   s = mkStr({s, "let sum_disc_price = e.$3 * (", one, " - e.$4);"});
   s = mkStr({s, "merge(b, { { e.$0, e.$1 }, {"
 "                e.$2," // quantity
@@ -150,9 +150,11 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
   s = mkStr({s,
     "}", // tuple
     "})", // merge
-    ")", // for
+    "))", // for
     ";", // let  
-    "result(x)"
+    "let b2 = appender[{i8,i8,i64,i64,i64,i64,i64,i64}];"
+    // "result(for(tovec(x), b2, |b,i,e| merge(b2, e)))"
+    "tovec(x)"
   });
   
   program << s;
@@ -174,7 +176,31 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
   WeldQuery query(conf, program.str(), std::move(inputs));
 
   auto resources = initQuery(nrThreads);
-  query.run();
+  auto res_val = query.run();
+
+  // translate result
+  struct Result {
+    struct Group {
+      char returnflag;
+      char linestatus;
+      int64_t sum_quant;
+      int64_t count;
+      int64_t sum_ext_price;
+      int64_t sum_discount;
+      int64_t sum_disc_price;
+      int64_t sum_charge;
+    };
+
+    Group* groups;
+    size_t num_groups;
+  };
+
+  auto wresult = (Result*)weld_value_data(res_val);
+
+  for (size_t i=0; i<wresult->num_groups; i++) {
+    auto& grp = wresult->groups[i];
+    printf("%c %c\n", grp.returnflag, grp.linestatus);
+  }
 
   using namespace types;
   auto& result = resources.query->result;
