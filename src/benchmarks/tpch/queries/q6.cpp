@@ -20,7 +20,8 @@ WeldQuery* q6_weld_prepare(Database& db,
   auto c2 = types::Date::castString("1995-01-01");
   auto c3 = types::Numeric<12, 2>::castString("0.05");
   auto c4 = types::Numeric<12, 2>::castString("0.07");
-  auto c5 = types::Integer(24);
+  auto c5 = types::Numeric<15, 2>::castString("24");
+
 
   std::ostringstream program;
 
@@ -61,8 +62,9 @@ Relation q6_weld(Database& db,
 
   auto wresult = (int64_t*)weld_value_data(res_val);
 
+#ifdef PRINT_RESULTS
   printf("q6: %lld\n", *wresult);
-
+#endif
 
   weld_value_free(res_val);
 
