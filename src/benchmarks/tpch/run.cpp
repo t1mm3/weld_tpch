@@ -56,7 +56,8 @@ int main(int argc, char* argv[]) {
    if (argc > 3) nrThreads = atoi(argv[3]);
 
    std::unordered_set<std::string> q = {"1h", "1v", "3h", "3v", "5h",  "5v",
-                                        "6h", "6v", "9h", "9v", "18h", "18v"};
+                                        "6h", "6v", "9h", "9v", "18h", "18v",
+                                        "1w"};
 
    if (auto v = std::getenv("vectorSize")) vectorSize = atoi(v);
    if (auto v = std::getenv("SIMDhash")) conf.useSimdHash = atoi(v);
@@ -87,6 +88,15 @@ int main(int argc, char* argv[]) {
                           if (clearCaches) clearOsCaches();
                           auto result =
                               q1_vectorwise(tpch, nrThreads, vectorSize);
+                          escape(&result);
+                       },
+                       repetitions);
+   if (q.count("1w"))
+      e.timeAndProfile("q1 weld      ", nrTuples(tpch, {"lineitem"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q1_weld(tpch, nrThreads);
                           escape(&result);
                        },
                        repetitions);
