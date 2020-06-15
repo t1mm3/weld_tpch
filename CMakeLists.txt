@@ -113,6 +113,7 @@ SET(WELD_INCLUDE "~/weld" CACHE STRING "Path to $WELD_HOME/install/include")
 SET(WELD_LIBRARY "~/weld" CACHE STRING "Path to $WELD_HOME/install/library")
 
 include_directories(${WELD_INCLUDE})
+link_directories(${WELD_LIBRARY})
 
 IF(DATADIR)
     message(STATUS "setting datadir to user defined")
@@ -218,7 +219,7 @@ target_include_directories(tpch PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
     PRIVATE src)
-target_link_libraries(tpch benchmark_config pthread hyper ${TBB_LIBRARIES} vectorwise common)
+target_link_libraries(tpch benchmark_config pthread hyper ${TBB_LIBRARIES} vectorwise common weld)
 
 add_executable(run_tpch
   ${HYPER_TRANSLATORS}
