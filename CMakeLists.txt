@@ -6,6 +6,8 @@ else()
   set(LINUX )
 endif()
 
+ADD_DEFINITIONS(-Werror=deprecated-copy)
+
 if(LINUX)
 set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)
@@ -75,6 +77,7 @@ ELSE(AUTOVECTORIZE)
 ENDIF(AUTOVECTORIZE)
 
 
+set(ENV{CXXFLAGS} "-Wno-error=deprecated-copy")
 # Download and unpack googletest at configure time
 configure_file(3rdparty/GTest.CMakeLists.txt googletest-download/CMakeLists.txt)
 execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
@@ -104,6 +107,12 @@ endif()
 # etc. as appropriate
 
 project(exec_engine_comparison)
+
+SET(WELD_HOME "~/weld" CACHE STRING "Path to $WELD_HOME")
+SET(WELD_INCLUDE "~/weld" CACHE STRING "Path to $WELD_HOME/install/include")
+SET(WELD_LIBRARY "~/weld" CACHE STRING "Path to $WELD_HOME/install/library")
+
+include_directories(${WELD_INCLUDE})
 
 IF(DATADIR)
     message(STATUS "setting datadir to user defined")
