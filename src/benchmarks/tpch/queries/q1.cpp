@@ -101,6 +101,15 @@ struct WeldQuery {
   }
 };
 
+std::string mkStr(const std::vector<std::string>& strs)
+{
+  std::ostringstream r;
+  for (auto& s : strs) {
+    r << s;
+  }
+  return r.str();
+}
+
 std::unique_ptr<runtime::Query> q1_weld(Database& db,
   size_t nrThreads)
 {
@@ -110,27 +119,43 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
 #endif
 
   types::Date c1 = types::Date::castString("1998-09-02");
-  types::Numeric<12, 2> one = types::Numeric<12, 2>::castString("1.00");
+  std::string one = std::to_string(types::Numeric<12, 2>::castString("1.00").value) + "l";
 
   std::ostringstream program;
   program << "|"
-    << "l_returnflag:vec[i8],"
-    << "l_linestatus:vec[i8],"
-    << "l_quantity:vec[i64],"
-    << "l_extendedprice:vec[i64],"
-    << "l_discount:vec[i64],"
-    << "l_shipdate:vec[i32],"
-    << "l_tax:vec[i64]"
+    << "l_returnflag:vec[i8],"      // 0
+    << "l_linestatus:vec[i8],"      // 1
+    << "l_quantity:vec[i64],"       // 2
+    << "l_extendedprice:vec[i64],"  // 3
+    << "l_discount:vec[i64],"       // 4
+    << "l_shipdate:vec[i32],"       // 5
+    << "l_tax:vec[i64]"             // 6
     << "|";
 
-  std::string main;
-  main = "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax)";
-  main = "filter(" + main + ", |e| e.$5 <= " + std::to_string(c1.value) + ")";
+  program << "let b = dictmerger[{i8,i8}, {i64,i64,i64,i64,i64,i64}, +];";
 
+  std::string s(
+    "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax)");
+  s = mkStr({"filter(", s, ", |e| e.$5 <= ", std::to_string(c1.value), ")"});
 
-  // dictmerger({(i8,i8)}, {i64,i64,i64,i64,i64,i64}, +)
-
-  program << main;
+  s = mkStr({"let x = for(", s, ", b, |b,i,e| "});
+  s = mkStr({s, "let sum_disc_price = e.$3 * (", one, " - e.$4);"});
+  s = mkStr({s, "merge(b, { { e.$0, e.$1 }, {"
+"                e.$2," // quantity
+"                1l," // count
+"                e.$3," // ext_price
+"                e.$4," // discount
+"                sum_disc_price,"
+"                sum_disc_price * (", one, " + e.$6)"}); // charge
+  s = mkStr({s,
+    "}", // tuple
+    "})", // merge
+    ")", // for
+    ";", // let  
+    "result(x)"
+  });
+  
+  program << s;
 
   WeldConfig conf(nrThreads);
 
