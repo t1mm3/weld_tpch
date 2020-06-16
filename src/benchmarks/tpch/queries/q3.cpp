@@ -53,6 +53,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "l_orderkey:vec[i32]"
     << "|";
 
+  // TODO: value should be empty, not doesnt seem it's supported by Weld
   program << "let ht_cust = groupmerger[i32, {i32}];";
 
   s = "";
@@ -93,23 +94,23 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
 
   if (optlookup) {
     s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
-      "|b,i,e| let optres = optlookup(ht_custord_res, e.$1);",
+      "|b0,i0,e0| let optres = optlookup(ht_custord_res, e0.$1);",
         "if(optres.$0, ",
           // true
-          "for(optres.$1, li_proj, |b1,i1,e1| merge(b1, {e.$2 * (", std::to_string(one.value), "l - e.$3), e.$1, e1.$0, e1.$1 }))"
+          "for(optres.$1, li_proj, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
           ","
           // false
-          "b)",
+          "b0)",
       "));"});
   } else {
     s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
-    "|b,i,e| let optres = optlookup(ht_custord_res, e.$1);",
-      "if(keyexists(ht_custord_res, e.$1), ",
+    "|b0,i0,e0| let optres = optlookup(ht_custord_res, e0.$1);",
+      "if(keyexists(ht_custord_res, e0.$1), ",
         // true
-        "for(lookup(ht_custord_res, e.$1), li_proj, |b1,i1,e1| merge(b1, {e.$2 * (", std::to_string(one.value), "l - e.$3), e.$1, e1.$0, e1.$1 }))"
+        "for(lookup(ht_custord_res, e0.$1), li_proj, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
         ","
         // false
-        "b)",
+        "b0)",
     "));"});
   }
   
@@ -173,11 +174,13 @@ std::unique_ptr<runtime::Query> q3_weld(Database& db,
   auto wresult = (Result*)weld_value_data(res_val);
 #ifdef PRINT_RESULTS
   printf("Q3 Results: num %d\n", (int)wresult->num_groups);
+#if 0
   for (size_t i=0; i<wresult->num_groups; i++) {
     auto& grp = wresult->groups[i];
     printf("%d %d %d %lld\n",
       grp.k1, grp.k2, grp.k3, grp.sum);
   }
+#endif
 #endif
 
   leaveQuery(nrThreads);
