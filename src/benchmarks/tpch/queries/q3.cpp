@@ -16,6 +16,133 @@ using namespace std;
 using vectorwise::primitives::Char_10;
 using vectorwise::primitives::hash_t;
 
+extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
+      bool *result) {
+    
+    static_assert(sizeof(char*) == sizeof(int64_t),
+      "only works with 64-bit pointers");
+
+    const char* c1 = "BUILDING";
+    uint16_t l1 = 8;
+
+    *result = (*xlen == l1) &&
+      (memcmp((char*)(*xstr), c1, l1) == 0);
+}
+
+WeldQuery* q3_weld_prepare(Database& db,
+  size_t nrThreads)
+{
+  types::Date c1 = types::Date::castString("1998-09-02");
+  std::string one = std::to_string(types::Numeric<12, 2>::castString("1.00").value) + "l";
+
+  std::ostringstream program;
+  program << "|"
+    << "l_returnflag:vec[i8],"      // 0
+    << "l_linestatus:vec[i8],"      // 1
+    << "l_quantity:vec[i64],"       // 2
+    << "l_extendedprice:vec[i64],"  // 3
+    << "l_discount:vec[i64],"       // 4
+    << "l_shipdate:vec[i32],"       // 5
+    << "l_tax:vec[i64]"             // 6
+    << "|";
+
+  program << "let b = dictmerger[{i8,i8}, {i64,i64,i64,i64,i64,i64}, +];";
+
+  std::string s(
+    "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax)");
+  s = mkStr({"filter(", s, ", |e| e.$5 <= ", std::to_string(c1.value), ")"});
+
+  s = mkStr({"let x = result(for(", s, ", b, |b,i,e| "});
+  s = mkStr({s, "let sum_disc_price = e.$3 * (", one, " - e.$4);"});
+  s = mkStr({s, "merge(b, { { e.$0, e.$1 }, {"
+"                e.$2," // quantity
+"                1l," // count
+"                e.$3," // ext_price
+"                e.$4," // discount
+"                sum_disc_price,"
+"                sum_disc_price * (", one, " + e.$6)"}); // charge
+  s = mkStr({s,
+    "}", // tuple
+    "})", // merge
+    "))", // for
+    ";", // let  
+    "let b2 = appender[{i8,i8,i64,i64,i64,i64,i64,i64}];"
+    // "result(for(tovec(x), b2, |b,i,e| merge(b2, e)))"
+    "tovec(x)"
+  });
+  
+  program << s;
+
+  auto& li = db["lineitem"];
+
+  auto inputs = std::make_unique<WeldInRelation>(li.nrTuples, std::vector<void*> {
+    li["l_returnflag"].data<types::Char<1>>(),
+    li["l_linestatus"].data<types::Char<1>>(),
+    li["l_quantity"].data<types::Numeric<12, 2>>(),
+    li["l_extendedprice"].data<types::Numeric<12, 2>>(),
+    li["l_discount"].data<types::Numeric<12, 2>>(),
+    li["l_shipdate"].data<types::Date>(),
+    li["l_tax"].data<types::Numeric<12, 2>>()
+  });
+
+  return new WeldQuery(nrThreads, program.str(), std::move(inputs));
+}
+
+std::unique_ptr<runtime::Query> q3_weld(Database& db,
+  size_t nrThreads, WeldQuery* q)
+{
+  auto resources = initQuery(nrThreads);
+  auto res_val = q->run(nrThreads);
+
+  // translate result
+  struct Result {
+    struct Group {
+      char returnflag;
+      char linestatus;
+      int64_t sum_quant;
+      int64_t count;
+      int64_t sum_ext_price;
+      int64_t sum_discount;
+      int64_t sum_disc_price;
+      int64_t sum_charge;
+    };
+
+    Group* groups;
+    size_t num_groups;
+  };
+
+  auto wresult = (Result*)weld_value_data(res_val);
+
+#ifdef PRINT_RESULTS
+  for (size_t i=0; i<wresult->num_groups; i++) {
+    auto& grp = wresult->groups[i];
+    printf("%c %c %lld %lld %lld %lld %lld %lld\n",
+      grp.returnflag, grp.linestatus,
+      grp.sum_quant, grp.count,
+      grp.sum_ext_price, grp.sum_discount,
+      grp.sum_disc_price, grp.sum_charge);
+  }
+#endif
+  using namespace types;
+  auto& result = resources.query->result;
+  auto retAttr = result->addAttribute("l_returnflag", sizeof(Char<1>));
+  auto statusAttr = result->addAttribute("l_linestatus", sizeof(Char<1>));
+  auto qtyAttr = result->addAttribute("sum_qty", sizeof(Numeric<12, 2>));
+  auto base_priceAttr =
+     result->addAttribute("sum_base_price", sizeof(Numeric<12, 2>));
+  auto disc_priceAttr =
+     result->addAttribute("sum_disc_price", sizeof(Numeric<12, 2>));
+  auto chargeAttr = result->addAttribute("sum_charge", sizeof(Numeric<12, 2>));
+  auto count_orderAttr = result->addAttribute("count_order", sizeof(int64_t));
+
+  leaveQuery(nrThreads);
+
+  weld_value_free(res_val);
+
+  return move(resources.query);
+}
+
+
 // select
 //  l_orderkey,
 //  sum(l_extendedprice * (1 - l_discount)) as revenue,

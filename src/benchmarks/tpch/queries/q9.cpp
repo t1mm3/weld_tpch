@@ -17,6 +17,47 @@ using namespace std;
 using vectorwise::primitives::Char_10;
 using vectorwise::primitives::Char_25;
 using vectorwise::primitives::hash_t;
+
+
+
+inline void splitJulianDay(unsigned jd, unsigned& year, unsigned& month, unsigned& day)
+  // Algorithm from the Calendar FAQ
+{
+   unsigned a = jd + 32044;
+   unsigned b = (4*a+3)/146097;
+   unsigned c = a-((146097*b)/4);
+   unsigned d = (4*c+3)/1461;
+   unsigned e = c-((1461*d)/4);
+   unsigned m = (5*e+2)/153;
+
+   day = e - ((153*m+2)/5) + 1;
+   month = m + 3 - (12*(m/10));
+   year = (100*b) + d - 4800 + (m/10);
+}
+
+extern "C" void weld_extract_year(uint32_t* date, bool *result) {
+    
+    static_assert(sizeof(char*) == sizeof(int64_t),
+      "only works with 64-bit pointers");
+    const char* c1 = "green";
+
+    unsigned year,month,day;
+    splitJulianDay(*date,year,month,day);
+
+    *result = year;
+}
+
+extern "C" void weld_str_like_green(uint16_t* xlen, int64_t *xstr,
+      bool *result) {
+    
+    static_assert(sizeof(char*) == sizeof(int64_t),
+      "only works with 64-bit pointers");
+    const char* c1 = "green";
+
+    *result = memmem((char*)(*xstr), *xlen, c1, 5) != nullptr;
+}
+
+
 /*
 
 select

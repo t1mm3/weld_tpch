@@ -55,7 +55,9 @@ int main(int argc, char* argv[]) {
    bool clearCaches = false;
    if (argc > 3) nrThreads = atoi(argv[3]);
 
-   std::unordered_set<std::string> q = {"1h", "1v", "1w", //"3h", "3v", "5h",  "5v",
+   std::unordered_set<std::string> q = {//"1h", "1v", "1w",
+                                        "3h", "3v", "3w",
+                                        // "5h",  "5v",
                                         "6h", "6v", "6w", // "9h", "9v", // "18h", "18v"
                                       };
 
@@ -122,6 +124,18 @@ int main(int argc, char* argv[]) {
              escape(&result);
           },
           repetitions);
+   if (q.count("3w")) {
+      auto w = q3_weld_prepare(tpch, nrThreads);
+      e.timeAndProfile("q3 weld      ", nrTuples(tpch, {"lineitem"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q3_weld(tpch, nrThreads, w);
+                          escape(&result);
+                       },
+                       repetitions);
+      delete w;    
+   }
    if (q.count("5h"))
       e.timeAndProfile("q5 hyper     ",
                        nrTuples(tpch, {"supplier", "region", "nation",

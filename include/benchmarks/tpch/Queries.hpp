@@ -57,6 +57,16 @@ private:
 
 #include <sstream>
 
+
+extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
+      bool *result);
+
+extern "C" void weld_str_like_green(uint16_t* xlen, int64_t *xstr,
+      bool *result);
+
+extern "C" void weld_extract_year(uint32_t* date, bool *result);
+// cudf[weld_str_eq,bool](x)
+
 struct WeldQuery {
   weld_module_t module;
   WeldConfig config;
@@ -82,7 +92,7 @@ struct WeldQuery {
     weld_module_free(module);
   }
 
-  weld_value_t run() {
+  weld_value_t run(size_t threads) {
     weld_error_t err = weld_error_new();
     auto r = weld_module_run(module, context, input ? input->value : nullptr, err);
     if (weld_error_code(err)) {
@@ -114,6 +124,14 @@ q1_weld(runtime::Database& db,
          size_t nrThreads,
          WeldQuery* q);
 
+
+WeldQuery* q3_weld_prepare(runtime::Database& db,
+  size_t nrThreads);
+
+std::unique_ptr<runtime::Query>
+q3_weld(runtime::Database& db,
+         size_t nrThreads,
+         WeldQuery* q);
 
 
 WeldQuery* q6_weld_prepare(runtime::Database& db,

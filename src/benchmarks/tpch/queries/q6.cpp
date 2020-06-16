@@ -58,7 +58,7 @@ Relation q6_weld(Database& db,
   Relation result;
   result.insert("revenue", make_unique<algebra::Numeric>(12, 4));
 
-  auto res_val = q->run();
+  auto res_val = q->run(nrThreads);
 
   auto wresult = (int64_t*)weld_value_data(res_val);
 

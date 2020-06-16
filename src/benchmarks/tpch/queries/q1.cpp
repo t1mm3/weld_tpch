@@ -81,7 +81,7 @@ std::unique_ptr<runtime::Query> q1_weld(Database& db,
   size_t nrThreads, WeldQuery* q)
 {
   auto resources = initQuery(nrThreads);
-  auto res_val = q->run();
+  auto res_val = q->run(nrThreads);
 
   // translate result
   struct Result {
