@@ -184,13 +184,13 @@ std::unique_ptr<runtime::Query> q3_weld(Database& db,
   auto wresult = (Result*)weld_value_data(res_val);
 #ifdef PRINT_RESULTS
   printf("Q3 Results: num %d\n", (int)wresult->num_groups);
-#if 0
+
   for (size_t i=0; i<wresult->num_groups; i++) {
     auto& grp = wresult->groups[i];
     printf("%d %d %d %lld\n",
       grp.k1, grp.k2, grp.k3, grp.sum);
   }
-#endif
+
 #endif
 
   leaveQuery(nrThreads);
