@@ -71,7 +71,28 @@ WeldQuery* q9_weld_prepare(Database& db,
   auto& part = db["part"];
   auto& partsupp = db["partsupp"];
 
+#if 0
+  n_nationkey
+  n_name
+  s_suppkey
+  s_nationkey
+  p_partkey
+  p_name
 
+  ps_partkey
+  ps_suppkey
+  ps_supplycost
+
+  l_orderkey
+  l_partkey
+  l_suppkey
+  l_extendedprice
+  l_discount
+  l_quantity
+
+  o_orderkey
+  o_orderdate
+#endif
   auto inputs = std::make_unique<WeldInRelation>(std::vector<std::pair<size_t, void*>> {
     { na.nrTuples, na["n_nationkey"].data<types::Integer>() },
     { na.nrTuples, &na["n_name"].varchar_data[0] },

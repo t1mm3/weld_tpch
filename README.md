@@ -19,6 +19,9 @@ Download `sandbox.sh` and modify `BASE` (base prefix to use) as well as `N` (num
 ### Q6
  * Part of Weld benchmarks [3]
 
+### Q9
+ * GroupBy on string key, not clear how to do that
+
 ## References
 * [1] Tim Gubner and Peter Boncz, Exploring Query Execution Strategies for JIT, Vectorization and SIMD, ADMS 2017, https://t1mm3.github.io/assets/papers/adms17.pdf
 * [2] Mihai Varga. Just-in-time Compilation in MonetDB with Weld. Vrije Universiteit Amsterdam, 2018, https://homepages.cwi.nl/~boncz/msc/2018-MihaiVarga.pdf
