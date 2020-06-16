@@ -30,7 +30,7 @@ extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
 }
 
 WeldQuery* q3_weld_prepare(Database& db,
-  size_t nrThreads)
+  size_t nrThreads, bool optlookup)
 {
 auto c1 = types::Date::castString("1995-03-15");
 auto c2 = types::Date::castString("1995-03-15");
@@ -90,15 +90,29 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
       "zip(l_shipdate, l_orderkey, l_extendedprice, l_discount),"
       "|e| e.$0 > ", std::to_string(c2.value),
     ")"});
-  s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
+
+  if (optlookup) {
+    s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
+      "|b,i,e| let optres = optlookup(ht_custord_res, e.$1);",
+        "if(optres.$0, ",
+          // true
+          "for(optres.$1, li_proj, |b1,i1,e1| merge(b1, {e.$2 * (", std::to_string(one.value), "l - e.$3), e.$1, e1.$0, e1.$1 }))"
+          ","
+          // false
+          "b)",
+      "));"});
+  } else {
+    s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
     "|b,i,e| let optres = optlookup(ht_custord_res, e.$1);",
-      "if(optres.$0, ",
+      "if(keyexists(ht_custord_res, e.$1), ",
         // true
-        "for(optres.$1, li_proj, |b1,i1,e1| merge(b1, {e.$2 * (", std::to_string(one.value), "l - e.$3), e.$1, e1.$0, e1.$1 }))"
+        "for(lookup(ht_custord_res, e.$1), li_proj, |b1,i1,e1| merge(b1, {e.$2 * (", std::to_string(one.value), "l - e.$3), e.$1, e1.$0, e1.$1 }))"
         ","
         // false
         "b)",
     "));"});
+  }
+  
   program << s;
 
   program << "let ht_group = dictmerger[{i32, i32, i32}, i64, +];";
@@ -158,6 +172,7 @@ std::unique_ptr<runtime::Query> q3_weld(Database& db,
 
   auto wresult = (Result*)weld_value_data(res_val);
 #ifdef PRINT_RESULTS
+  printf("Q3 Results: num %d\n", (int)wresult->num_groups);
   for (size_t i=0; i<wresult->num_groups; i++) {
     auto& grp = wresult->groups[i];
     printf("%d %d %d %lld\n",

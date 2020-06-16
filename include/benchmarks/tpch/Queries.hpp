@@ -133,7 +133,7 @@ q1_weld(runtime::Database& db,
 
 
 WeldQuery* q3_weld_prepare(runtime::Database& db,
-  size_t nrThreads);
+  size_t nrThreads, bool optlookup);
 
 std::unique_ptr<runtime::Query>
 q3_weld(runtime::Database& db,
