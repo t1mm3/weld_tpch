@@ -24,9 +24,18 @@ extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
 
     const char* c1 = "BUILDING";
     uint16_t l1 = 8;
+    char* str = (char*)(*xstr);
 
+    uint16_t len = std::min(l1, *xlen);
+#if 0
+    for (uint16_t i=0; i<len; i++) {
+      printf("%c", str[i]);
+    }
+#endif
     *result = (*xlen == l1) &&
-      (memcmp((char*)(*xstr), c1, l1) == 0);
+      (!memcmp(str, c1, len));
+
+    // printf("-> %d\n", *result);
 }
 
 WeldQuery* q3_weld_prepare(Database& db,
@@ -39,7 +48,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
 
   std::string s;
   std::ostringstream program;
-
+ 
   program << "|"
     << "c_custkey:vec[i32],"
     << "c_mktsegment:vec[{i16,i64}],"
@@ -49,8 +58,8 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "o_orderkey:vec[i32],"
     << "l_discount:vec[i64],"
     << "l_extendedprice:vec[i64],"
-    << "l_shipdate:vec[i32],"
-    << "l_orderkey:vec[i32]"
+    << "l_orderkey:vec[i32],"
+    << "l_shipdate:vec[i32]"
     << "|";
 
   // TODO: value should be empty, not doesnt seem it's supported by Weld
@@ -63,7 +72,8 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
       "|e| cudf[weld_str_eq_building,bool](e.$1.$0, e.$1.$1)",
     ")"});
 
-  s = mkStr({"let ht_cust_res = result(for(", s, ", ht_cust, |b,i,e| merge(ht_cust, { e.$0, {1}})));"});
+  s = mkStr({"let ht_cust_res = result(for(", s, ", ht_cust, ",
+    "|b,i,e| merge(ht_cust, { e.$0, {1}})));"});
   program << s;
 
   program << "let ht_custord = groupmerger[i32, {i32,i32}];";
@@ -79,7 +89,8 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
       "|e| keyexists(ht_cust_res, e.$0)",
     ")"});
 
-  s = mkStr({"let ht_custord_res = result(for(", s, ", ht_custord, |b,i,e| merge(ht_custord, { e.$1, {e.$2, e.$3}})));"});
+  s = mkStr({"let ht_custord_res = result(for(", s, ", ht_custord, ",
+    "|b,i,e| merge(ht_custord, { e.$1, {e.$2, e.$3}})));"});
   program << s;
 
   // materialize probed result to make our lives easier
@@ -94,20 +105,20 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
 
   if (optlookup) {
     s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
-      "|b0,i0,e0| let optres = optlookup(ht_custord_res, e0.$1);",
+      "|b0,i0,e0| let k = e0.$1; let optres = optlookup(ht_custord_res, k);",
         "if(optres.$0, ",
           // true
-          "for(optres.$1, li_proj, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
+          "for(optres.$1, b0, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
           ","
           // false
           "b0)",
       "));"});
   } else {
     s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
-    "|b0,i0,e0| let optres = optlookup(ht_custord_res, e0.$1);",
-      "if(keyexists(ht_custord_res, e0.$1), ",
+    "|b0,i0,e0| let k = e0.$1; ",
+      "if(keyexists(ht_custord_res, k), ",
         // true
-        "for(lookup(ht_custord_res, e0.$1), li_proj, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
+        "for(lookup(ht_custord_res, k), b0, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
         ","
         // false
         "b0)",
@@ -115,7 +126,6 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
   }
   
   program << s;
-
   program << "let ht_group = dictmerger[{i32, i32, i32}, i64, +];";
   s = "";
 
