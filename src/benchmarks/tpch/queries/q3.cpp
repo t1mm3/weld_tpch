@@ -103,6 +103,8 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
       "|e| e.$0 > ", std::to_string(c2.value),
     ")"});
 
+  // FK join, but Weld only allows full N join
+
   if (optlookup) {
     s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
       "|b0,i0,e0| let k = e0.$1; let optres = optlookup(ht_custord_res, k);",

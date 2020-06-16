@@ -150,6 +150,17 @@ q6_weld(runtime::Database& db,
          WeldQuery* q);
 
 
+
+WeldQuery* q9_weld_prepare(runtime::Database& db,
+  size_t nrThreads, bool optlookup);
+
+std::unique_ptr<runtime::Query>
+q9_weld(runtime::Database& db,
+         size_t nrThreads,
+         WeldQuery* q);
+
+
+
 #define PRINT_RESULTS
 
 struct Q1Builder : public Query, private vectorwise::QueryBuilder {

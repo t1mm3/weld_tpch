@@ -56,6 +56,89 @@ extern "C" void weld_str_like_green(uint16_t* xlen, int64_t *xstr,
     *result = memmem((char*)(*xstr), *xlen, c1, 5) != nullptr;
 }
 
+WeldQuery* q9_weld_prepare(Database& db,
+  size_t nrThreads, bool optlookup)
+{
+  std::ostringstream program;
+
+  program << "tovec(z)";
+
+  auto& cu = db["customer"];
+  auto& ord = db["orders"];
+  auto& li = db["lineitem"];
+  auto& na = db["nation"];
+  auto& supp = db["supplier"];
+  auto& part = db["part"];
+  auto& partsupp = db["partsupp"];
+
+
+  auto inputs = std::make_unique<WeldInRelation>(std::vector<std::pair<size_t, void*>> {
+    { na.nrTuples, na["n_nationkey"].data<types::Integer>() },
+    { na.nrTuples, &na["n_name"].varchar_data[0] },
+
+    { supp.nrTuples, supp["s_suppkey"].data<types::Integer>()},
+    { supp.nrTuples, supp["s_nationkey"].data<types::Integer>()},
+
+    { part.nrTuples, part["p_partkey"].data<types::Integer>()},
+    { part.nrTuples, part["p_name"].data<types::Varchar<55>>()},
+
+    { partsupp.nrTuples, partsupp["ps_partkey"].data<types::Integer>() },
+    { partsupp.nrTuples, partsupp["ps_suppkey"].data<types::Integer>() },
+    { partsupp.nrTuples, partsupp["ps_supplycost"].data<types::Numeric<12, 2>>() },
+
+    { li.nrTuples, li["l_orderkey"].data<types::Integer>() },
+    { li.nrTuples, li["l_partkey"].data<types::Integer>() },
+    { li.nrTuples, li["l_suppkey"].data<types::Integer>() },
+    { li.nrTuples, li["l_extendedprice"].data<types::Numeric<12, 2>>() },
+    { li.nrTuples, li["l_discount"].data<types::Numeric<12, 2>>() },
+    { li.nrTuples, li["l_quantity"].data<types::Numeric<12, 2>>() },
+
+    { ord.nrTuples, ord["o_orderkey"].data<types::Integer>() },
+    { ord.nrTuples, ord["o_orderdate"].data<types::Date>() },
+  });
+
+  return new WeldQuery(nrThreads, program.str(), std::move(inputs));
+}
+
+std::unique_ptr<runtime::Query> q9_weld(Database& db,
+  size_t nrThreads, WeldQuery* q)
+{
+  auto resources = initQuery(nrThreads);
+  auto res_val = q->run(nrThreads);
+
+  // translate result
+  struct Result {
+    struct Group {
+      int32_t k1;
+      int32_t k2;
+      int32_t k3;
+      int64_t sum;
+    };
+
+    Group* groups;
+    size_t num_groups;
+  };
+
+  auto wresult = (Result*)weld_value_data(res_val);
+#ifdef PRINT_RESULTS
+  printf("Q3 Results: num %d\n", (int)wresult->num_groups);
+
+  for (size_t i=0; i<wresult->num_groups; i++) {
+    auto& grp = wresult->groups[i];
+    printf("%d %d %d %lld\n",
+      grp.k1, grp.k2, grp.k3, grp.sum);
+  }
+
+#endif
+
+  leaveQuery(nrThreads);
+
+  weld_value_free(res_val);
+
+  return move(resources.query);
+}
+
+
 
 /*
 

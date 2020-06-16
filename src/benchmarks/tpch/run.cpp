@@ -56,9 +56,11 @@ int main(int argc, char* argv[]) {
    if (argc > 3) nrThreads = atoi(argv[3]);
 
    std::unordered_set<std::string> q = {//"1h", "1v", "1w",
-                                        "3h", "3v", "3w", "3w2",
+                                        //"3h", "3v", "3w", "3w2",
                                         // "5h",  "5v",
-                                        "6h", "6v", "6w", // "9h", "9v", // "18h", "18v"
+                                        "6h", "6v", "6w",
+                                        "9h", "9v", "9w", "9w2",
+                                         // "18h", "18v"
                                       };
 
    if (auto v = std::getenv("vectorSize")) vectorSize = atoi(v);
@@ -193,6 +195,33 @@ int main(int argc, char* argv[]) {
                           if (clearCaches) clearOsCaches();
                           auto result =
                               q6_weld(tpch, nrThreads, w);
+                          escape(&result);
+                       },
+                       repetitions);
+      delete w;    
+   }
+
+   if (q.count("9w")) {
+      auto w = q9_weld_prepare(tpch, nrThreads, true);
+      e.timeAndProfile("q9 weld      ", nrTuples(tpch, {"nation", "supplier", "part", "partsupp",
+                                       "lineitem", "orders"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q9_weld(tpch, nrThreads, w);
+                          escape(&result);
+                       },
+                       repetitions);
+      delete w;    
+   }
+   if (q.count("9w2")) {
+      auto w = q9_weld_prepare(tpch, nrThreads, false);
+      e.timeAndProfile("q9 weld noopt", nrTuples(tpch, {"nation", "supplier", "part", "partsupp",
+                                       "lineitem", "orders"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q9_weld(tpch, nrThreads, w);
                           escape(&result);
                        },
                        repetitions);
