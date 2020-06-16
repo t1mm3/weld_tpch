@@ -32,57 +32,96 @@ extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
 WeldQuery* q3_weld_prepare(Database& db,
   size_t nrThreads)
 {
-  types::Date c1 = types::Date::castString("1998-09-02");
-  std::string one = std::to_string(types::Numeric<12, 2>::castString("1.00").value) + "l";
+auto c1 = types::Date::castString("1995-03-15");
+auto c2 = types::Date::castString("1995-03-15");
+const auto one = types::Numeric<12, 2>::castString("1.00");
+const auto zero = types::Numeric<12, 4>::castString("0.00");
 
+  std::string s;
   std::ostringstream program;
+
   program << "|"
-    << "l_returnflag:vec[i8],"      // 0
-    << "l_linestatus:vec[i8],"      // 1
-    << "l_quantity:vec[i64],"       // 2
-    << "l_extendedprice:vec[i64],"  // 3
-    << "l_discount:vec[i64],"       // 4
-    << "l_shipdate:vec[i32],"       // 5
-    << "l_tax:vec[i64]"             // 6
+    << "c_custkey:vec[i32],"
+    << "c_mktsegment:vec[{i16,i64}],"
+    << "o_orderdate:vec[i32],"
+    << "o_shippriority:vec[i32],"
+    << "o_custkey:vec[i32],"
+    << "o_orderkey:vec[i32],"
+    << "l_discount:vec[i64],"
+    << "l_extendedprice:vec[i64],"
+    << "l_shipdate:vec[i32],"
+    << "l_orderkey:vec[i32]"
     << "|";
 
-  program << "let b = dictmerger[{i8,i8}, {i64,i64,i64,i64,i64,i64}, +];";
+  program << "let ht_cust = groupmerger[i32, {}];";
 
-  std::string s(
-    "zip(l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_shipdate, l_tax)");
-  s = mkStr({"filter(", s, ", |e| e.$5 <= ", std::to_string(c1.value), ")"});
+  s = "";
+  s = mkStr({
+    "filter("
+      "zip(c_custkey, c_mktsegment),"
+      "|e| cudf[weld_str_eq_building,bool](e.$1.$0, e.$1.$1)",
+    ")"});
 
-  s = mkStr({"let x = result(for(", s, ", b, |b,i,e| "});
-  s = mkStr({s, "let sum_disc_price = e.$3 * (", one, " - e.$4);"});
-  s = mkStr({s, "merge(b, { { e.$0, e.$1 }, {"
-"                e.$2," // quantity
-"                1l," // count
-"                e.$3," // ext_price
-"                e.$4," // discount
-"                sum_disc_price,"
-"                sum_disc_price * (", one, " + e.$6)"}); // charge
-  s = mkStr({s,
-    "}", // tuple
-    "})", // merge
-    "))", // for
-    ";", // let  
-    "let b2 = appender[{i8,i8,i64,i64,i64,i64,i64,i64}];"
-    // "result(for(tovec(x), b2, |b,i,e| merge(b2, e)))"
-    "tovec(x)"
-  });
-  
+  s = mkStr({"let ht_cust_res = result(for(", s, ", ht_cust, |b,i,e| merge(ht_cust, { e.$0, {}})));"});
   program << s;
 
+  program << "let ht_custord = groupmerger[i32, {i32,i32}];";
+  s = "";
+  s = mkStr({
+    "filter("
+      "zip(o_custkey, o_orderkey, o_orderdate, o_shippriority),"
+      "|e| e.$2 < ", std::to_string(c1.value),
+    ")"});
+  s = mkStr({
+    "filter(",
+      s, ",",
+      "|e| keyexists(ht_cust_res, e.$0)",
+    ")"});
+
+  s = mkStr({"let ht_custord_res = result(for(", s, ", ht_custord, |b,i,e| merge(ht_custord, { e.$1, {e.$2, e.$3}})));"});
+  program << s;
+
+  // materialize probed result to make our lives easier
+  program << "let li_proj = appender[{i64, i32, i32,i32}];";
+
+  s = "";
+  s = mkStr({
+    "filter("
+      "zip(l_shipdate, l_orderkey, l_extendedprice, l_discount),"
+      "|e| e.$0 > ", std::to_string(c2.value),
+    ")"});
+  s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
+    "|b,i,e| let optres = optlookup(ht_custord_res, e.$1);",
+      "if(optres.$0, merge(b, {e.$2 * (", std::to_string(one.value), " - e.$3), e.$1, (optres.$1).$0, (optres.$1).$1 }), b)",
+    "));"});
+  program << s;
+
+  program << "let ht_group = dictmerger[{i32, i32, i32}, i64, +];";
+  s = "";
+
+  program << "let z = result(for(li_proj_res, ht_group, |b,i,e| "
+    << "merge(b, { { e.$1, e.$2, e.$3 }, e.$0})"
+    << "));";
+
+  program << "tovec(z)";
+
+  auto& cu = db["customer"];
+  auto& ord = db["orders"];
   auto& li = db["lineitem"];
 
-  auto inputs = std::make_unique<WeldInRelation>(li.nrTuples, std::vector<void*> {
-    li["l_returnflag"].data<types::Char<1>>(),
-    li["l_linestatus"].data<types::Char<1>>(),
-    li["l_quantity"].data<types::Numeric<12, 2>>(),
-    li["l_extendedprice"].data<types::Numeric<12, 2>>(),
-    li["l_discount"].data<types::Numeric<12, 2>>(),
-    li["l_shipdate"].data<types::Date>(),
-    li["l_tax"].data<types::Numeric<12, 2>>()
+  auto inputs = std::make_unique<WeldInRelation>(std::vector<std::pair<size_t, void*>> {
+    { cu.nrTuples, cu["c_custkey"].data<types::Integer>() },
+    { cu.nrTuples, cu["c_mktsegment"].data<types::Char<10>>() },
+
+    { ord.nrTuples, ord["o_orderdate"].data<types::Date>() },
+    { ord.nrTuples, ord["o_shippriority"].data<types::Integer>() },
+    { ord.nrTuples, ord["o_custkey"].data<types::Integer>() },
+    { ord.nrTuples, ord["o_orderkey"].data<types::Integer>() },
+
+    { li.nrTuples, li["l_discount"].data<types::Numeric<12, 2>>() },
+    { li.nrTuples, li["l_extendedprice"].data<types::Numeric<12, 2>>() },
+    { li.nrTuples, li["l_orderkey"].data<types::Integer>() },
+    { li.nrTuples, li["l_shipdate"].data<types::Date>() },
   });
 
   return new WeldQuery(nrThreads, program.str(), std::move(inputs));

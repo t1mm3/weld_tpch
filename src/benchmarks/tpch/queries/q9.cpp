@@ -39,7 +39,6 @@ extern "C" void weld_extract_year(uint32_t* date, bool *result) {
     
     static_assert(sizeof(char*) == sizeof(int64_t),
       "only works with 64-bit pointers");
-    const char* c1 = "green";
 
     unsigned year,month,day;
     splitJulianDay(*date,year,month,day);

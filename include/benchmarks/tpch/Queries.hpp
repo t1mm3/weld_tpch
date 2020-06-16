@@ -51,6 +51,14 @@ struct WeldInRelation : IWeldRelation {
     value = weld_value_new(&vecs[0]);
   }
 
+  WeldInRelation(const std::vector<std::pair<size_t, void*>>& columns) {
+    for (auto& c : columns) {
+      vecs.push_back(weld_vector {c.second, c.first});
+    }
+
+    value = weld_value_new(&vecs[0]);
+  }
+
 private:
   std::vector<weld_vector> vecs;
 };
@@ -65,7 +73,6 @@ extern "C" void weld_str_like_green(uint16_t* xlen, int64_t *xstr,
       bool *result);
 
 extern "C" void weld_extract_year(uint32_t* date, bool *result);
-// cudf[weld_str_eq,bool](x)
 
 struct WeldQuery {
   weld_module_t module;

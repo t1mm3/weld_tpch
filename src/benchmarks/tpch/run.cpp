@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
           repetitions);
    if (q.count("3w")) {
       auto w = q3_weld_prepare(tpch, nrThreads);
-      e.timeAndProfile("q3 weld      ", nrTuples(tpch, {"lineitem"}),
+      e.timeAndProfile("q3 weld      ", nrTuples(tpch, {"customer", "orders", "lineitem"}),
                        [&]() {
                           if (clearCaches) clearOsCaches();
                           auto result =

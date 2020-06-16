@@ -20,6 +20,6 @@ Download `sandbox.sh` and modify `BASE` (base prefix to use) as well as `N` (num
  * TimoKersten's string implementation requires us to store the length too i.e. a string is a tuple `{i16, i64}`
 
 ## References
-[1] Tim Gubner and Peter Boncz, Exploring Query Execution Strategies for JIT, Vectorization and SIMD, ADMS 2017, https://t1mm3.github.io/assets/papers/adms17.pdf
-[2] Mihai Varga. Just-in-time Compilation in MonetDB with Weld. Vrije Universiteit Amsterdam, 2018, https://homepages.cwi.nl/~boncz/msc/2018-MihaiVarga.pdf
-[3] https://github.com/weld-project/weld-benchmarks
+* [1] Tim Gubner and Peter Boncz, Exploring Query Execution Strategies for JIT, Vectorization and SIMD, ADMS 2017, https://t1mm3.github.io/assets/papers/adms17.pdf
+* [2] Mihai Varga. Just-in-time Compilation in MonetDB with Weld. Vrije Universiteit Amsterdam, 2018, https://homepages.cwi.nl/~boncz/msc/2018-MihaiVarga.pdf
+* [3] https://github.com/weld-project/weld-benchmarks
