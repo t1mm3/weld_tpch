@@ -143,6 +143,28 @@ std::unique_ptr<runtime::Query> q3_weld(Database& db,
   auto resources = initQuery(nrThreads);
   auto res_val = q->run(nrThreads);
 
+  // translate result
+  struct Result {
+    struct Group {
+      int32_t k1;
+      int32_t k2;
+      int32_t k3;
+      int64_t sum;
+    };
+
+    Group* groups;
+    size_t num_groups;
+  };
+
+  auto wresult = (Result*)weld_value_data(res_val);
+#ifdef PRINT_RESULTS
+  for (size_t i=0; i<wresult->num_groups; i++) {
+    auto& grp = wresult->groups[i];
+    printf("%d %d %d %lld\n",
+      grp.k1, grp.k2, grp.k3, grp.sum);
+  }
+#endif
+
   leaveQuery(nrThreads);
 
   weld_value_free(res_val);
