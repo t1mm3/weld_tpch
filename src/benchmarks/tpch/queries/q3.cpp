@@ -53,7 +53,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "l_orderkey:vec[i32]"
     << "|";
 
-  program << "let ht_cust = groupmerger[i32, {}];";
+  program << "let ht_cust = groupmerger[i32, {i32}];";
 
   s = "";
   s = mkStr({
@@ -62,7 +62,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
       "|e| cudf[weld_str_eq_building,bool](e.$1.$0, e.$1.$1)",
     ")"});
 
-  s = mkStr({"let ht_cust_res = result(for(", s, ", ht_cust, |b,i,e| merge(ht_cust, { e.$0, {}})));"});
+  s = mkStr({"let ht_cust_res = result(for(", s, ", ht_cust, |b,i,e| merge(ht_cust, { e.$0, {1}})));"});
   program << s;
 
   program << "let ht_custord = groupmerger[i32, {i32,i32}];";
@@ -92,7 +92,12 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     ")"});
   s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
     "|b,i,e| let optres = optlookup(ht_custord_res, e.$1);",
-      "if(optres.$0, merge(b, {e.$2 * (", std::to_string(one.value), " - e.$3), e.$1, (optres.$1).$0, (optres.$1).$1 }), b)",
+      "if(optres.$0, ",
+        // true
+        "for(optres.$1, li_proj, |b1,i1,e1| merge(b1, {e.$2 * (", std::to_string(one.value), "l - e.$3), e.$1, e1.$0, e1.$1 }))"
+        ","
+        // false
+        "b)",
     "));"});
   program << s;
 
@@ -109,9 +114,14 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
   auto& ord = db["orders"];
   auto& li = db["lineitem"];
 
+  {
+    types::Char<10> tmp;
+    static_assert(sizeof(tmp.len) == sizeof(uint8_t), "Must be 8 bit max length");
+  }
+
   auto inputs = std::make_unique<WeldInRelation>(std::vector<std::pair<size_t, void*>> {
     { cu.nrTuples, cu["c_custkey"].data<types::Integer>() },
-    { cu.nrTuples, cu["c_mktsegment"].data<types::Char<10>>() },
+    { cu.nrTuples, &cu["c_mktsegment"].varchar_data[0] },
 
     { ord.nrTuples, ord["o_orderdate"].data<types::Date>() },
     { ord.nrTuples, ord["o_shippriority"].data<types::Integer>() },
@@ -132,47 +142,6 @@ std::unique_ptr<runtime::Query> q3_weld(Database& db,
 {
   auto resources = initQuery(nrThreads);
   auto res_val = q->run(nrThreads);
-
-  // translate result
-  struct Result {
-    struct Group {
-      char returnflag;
-      char linestatus;
-      int64_t sum_quant;
-      int64_t count;
-      int64_t sum_ext_price;
-      int64_t sum_discount;
-      int64_t sum_disc_price;
-      int64_t sum_charge;
-    };
-
-    Group* groups;
-    size_t num_groups;
-  };
-
-  auto wresult = (Result*)weld_value_data(res_val);
-
-#ifdef PRINT_RESULTS
-  for (size_t i=0; i<wresult->num_groups; i++) {
-    auto& grp = wresult->groups[i];
-    printf("%c %c %lld %lld %lld %lld %lld %lld\n",
-      grp.returnflag, grp.linestatus,
-      grp.sum_quant, grp.count,
-      grp.sum_ext_price, grp.sum_discount,
-      grp.sum_disc_price, grp.sum_charge);
-  }
-#endif
-  using namespace types;
-  auto& result = resources.query->result;
-  auto retAttr = result->addAttribute("l_returnflag", sizeof(Char<1>));
-  auto statusAttr = result->addAttribute("l_linestatus", sizeof(Char<1>));
-  auto qtyAttr = result->addAttribute("sum_qty", sizeof(Numeric<12, 2>));
-  auto base_priceAttr =
-     result->addAttribute("sum_base_price", sizeof(Numeric<12, 2>));
-  auto disc_priceAttr =
-     result->addAttribute("sum_disc_price", sizeof(Numeric<12, 2>));
-  auto chargeAttr = result->addAttribute("sum_charge", sizeof(Numeric<12, 2>));
-  auto count_orderAttr = result->addAttribute("count_order", sizeof(int64_t));
 
   leaveQuery(nrThreads);
 

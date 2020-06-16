@@ -15,6 +15,38 @@ using algebra::Type;
 
 namespace runtime {
 
+struct varchar {
+  uint16_t len;
+  const char* arr;
+
+   varchar() {
+      // produce segfault!
+      len = 3;
+      arr = "XXX";
+   }
+
+   varchar(const char* s) {
+      arr = s;
+      len = strlen(s);
+   }
+
+  varchar(void* data, size_t idx, size_t max_len) {
+      const char* val = (const char*)data;
+      varchar r;
+
+#define LENGTH_IND uint8_t
+
+      size_t sz = sizeof(LENGTH_IND) + max_len;
+      const char* dest = &val[idx * sz];
+
+      len = *((LENGTH_IND*)dest);
+      arr = dest + sizeof(LENGTH_IND);
+
+      // printf("len=%d arr=%s\n", len, arr);
+#undef LENGTH_IND
+   }
+};
+
 class Attribute {
  public:
    // Attribute() = default;
@@ -24,6 +56,8 @@ class Attribute {
    runtime::Vector<void*> data_;
    std::string name;
    std::unique_ptr<Type> type;
+
+   std::vector<varchar> varchar_data;
 
    template <typename T> T* data() { return typedAccess<T>().data(); }
    void* data() { return data_.data(); }

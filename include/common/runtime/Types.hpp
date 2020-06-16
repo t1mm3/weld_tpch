@@ -87,6 +87,10 @@ class Integer {
    }
    /// Cast
    static Integer castString(const char* str, uint32_t strLen);
+
+   static bool is_varchar() { return false; }
+
+   static size_t get_max_len() { return sizeof(value); }
 };
 //---------------------------------------------------------------------------
 inline Integer modulo(Integer x, int32_t y) { return Integer(x.value % y); }
@@ -125,6 +129,9 @@ template <unsigned maxLen> class Varchar {
    }
    /// Comparison
    bool operator<(const Varchar& other) const;
+
+   static bool is_varchar() { return true; }
+   static size_t get_max_len() { return maxLen; }
 
    /// Build
    static Varchar build(const char* value) {
@@ -254,6 +261,9 @@ template <unsigned maxLen> class Char {
    /// Comparison
    bool operator>=(const Char& other) const;
 
+   static bool is_varchar() { return true; }
+   static size_t get_max_len() { return maxLen; }
+
    /// Build
    static Char build(const char* value) {
       Char result;
@@ -377,6 +387,10 @@ template <> class Char<1> {
    bool operator>(const Char& other) const { return value > other.value; }
    /// Comparison
    bool operator>=(const Char& other) const { return value >= other.value; }
+
+   static bool is_varchar() { return false; }
+
+   static size_t get_max_len() { return 1; }
 
    /// Build
    static Char build(const char* value) {
@@ -646,6 +660,9 @@ template <unsigned len, unsigned precision> class Numeric {
          return buildRaw(result);
       }
    }
+
+   static bool is_varchar() { return false; }
+   static size_t get_max_len() { return sizeof(value); }
 };
 //---------------------------------------------------------------------------
 template <unsigned len, unsigned precision>
@@ -717,6 +734,9 @@ class Date {
    static Date castString(const char* str, uint32_t strLen);
    /// Cast
    static Date castString(std::string s);
+
+   static bool is_varchar() { return false; }
+   static size_t get_max_len() { return sizeof(value); }
 };
 //---------------------------------------------------------------------------
 /// Extract year
@@ -751,6 +771,9 @@ class Timestamp {
    bool operator>(const Timestamp& t) const { return value > t.value; }
    /// Cast
    static Timestamp castString(const char* str, uint32_t strLen);
+
+   static bool is_varchar() { return false; }
+   static size_t get_max_len() { return sizeof(value); }
 };
 //---------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& out, const Timestamp& value);

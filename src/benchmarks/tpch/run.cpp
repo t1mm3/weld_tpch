@@ -106,6 +106,18 @@ int main(int argc, char* argv[]) {
       delete w;    
    }
 
+   if (q.count("3w")) {
+      auto w = q3_weld_prepare(tpch, nrThreads);
+      e.timeAndProfile("q3 weld      ", nrTuples(tpch, {"customer", "orders", "lineitem"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q3_weld(tpch, nrThreads, w);
+                          escape(&result);
+                       },
+                       repetitions);
+      delete w;    
+   }
    if (q.count("3h"))
       e.timeAndProfile("q3 hyper     ",
                        nrTuples(tpch, {"customer", "orders", "lineitem"}),
@@ -124,18 +136,6 @@ int main(int argc, char* argv[]) {
              escape(&result);
           },
           repetitions);
-   if (q.count("3w")) {
-      auto w = q3_weld_prepare(tpch, nrThreads);
-      e.timeAndProfile("q3 weld      ", nrTuples(tpch, {"customer", "orders", "lineitem"}),
-                       [&]() {
-                          if (clearCaches) clearOsCaches();
-                          auto result =
-                              q3_weld(tpch, nrThreads, w);
-                          escape(&result);
-                       },
-                       repetitions);
-      delete w;    
-   }
    if (q.count("5h"))
       e.timeAndProfile("q5 hyper     ",
                        nrTuples(tpch, {"supplier", "region", "nation",

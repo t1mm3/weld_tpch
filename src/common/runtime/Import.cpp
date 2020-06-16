@@ -1,5 +1,6 @@
 #include "common/runtime/Import.hpp"
 #include "common/runtime/Mmap.hpp"
+#include "common/runtime/Database.hpp"
 #include "common/runtime/Types.hpp"
 #include "errno.h"
 #include "sys/stat.h"
@@ -170,6 +171,15 @@ size_t readBinary(runtime::Relation& r, ColumnConfig& col, std::string path) {
       /*attr.type = col.type;  */                                              \
       auto& data = attr.typedAccessForChange<rt_type>();                       \
       data.readBinary(name.data());                                            \
+      if (rt_type::is_varchar()) {                                             \
+        auto arr = data.data();                                                \
+        size_t sz = data.size();                                               \
+        attr.varchar_data.reserve(sz + 4*1024);                                \
+        for (size_t i=0; i<sz; i++) {                                          \
+          attr.varchar_data.emplace_back(runtime::varchar(arr, i,              \
+            rt_type::get_max_len()));                                          \
+        }                                                                      \
+      }                                                                        \
       return data.size();                                                      \
    }
    switch (algebraToRTType(col.type)) {
