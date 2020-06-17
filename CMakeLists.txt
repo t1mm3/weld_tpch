@@ -77,6 +77,7 @@ ELSE(AUTOVECTORIZE)
 ENDIF(AUTOVECTORIZE)
 
 
+if (FALSE)
 set(ENV{CXXFLAGS} "-Wno-error=deprecated-copy")
 # Download and unpack googletest at configure time
 configure_file(3rdparty/GTest.CMakeLists.txt googletest-download/CMakeLists.txt)
@@ -102,7 +103,7 @@ if(CMAKE_VERSION VERSION_LESS 2.8.11)
     include_directories("${gtest_SOURCE_DIR}/include"
                         "${gmock_SOURCE_DIR}/include")
 endif()
-
+endif()
 # Now simply link your own targets against gtest, gmock,
 # etc. as appropriate
 
@@ -261,7 +262,7 @@ target_include_directories(run_prim PUBLIC
 target_link_libraries(run_prim vectorwise common ${TBB_LIBRARIES}  ${JEVENTSLIB})
 
 # Enable tests
-enable_testing()
+# enable_testing()
 set(CTEST_OUTPUT_ON_FAILURE "1")
 
 add_executable(test_all
