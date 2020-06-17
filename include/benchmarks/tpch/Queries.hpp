@@ -79,7 +79,7 @@ struct WeldQuery {
       std::unique_ptr<WeldInRelation>&& input) : config(threads), input(std::move(input)) {
     weld_error_t err = weld_error_new();
     module = weld_module_compile(q.c_str(), config.value, err);
-    printf("threads %d %s\n", (int)threads, weld_conf_get(config.value, "weld.threads"));
+    // printf("threads %d %s\n", (int)threads, weld_conf_get(config.value, "weld.threads"));
     if (weld_error_code(err)) {
       const char *msg = weld_error_message(err);
       printf("Error message: %s\n", msg);
@@ -97,7 +97,7 @@ struct WeldQuery {
   weld_value_t run(size_t threads) {
     WeldConfig cfg(threads);
     auto context = weld_context_new(cfg.value);
-    printf("threads %d\n", (int)threads);
+    // printf("threads %d\n", (int)threads);
     weld_error_t err = weld_error_new();
     auto r = weld_module_run(module, context, input ? input->value : nullptr, err);
     if (weld_error_code(err)) {

@@ -295,9 +295,9 @@ std::unique_ptr<runtime::Query> q9_weld(Database& db,
   };
 
   auto wresult = (Result*)weld_value_data(res_val);
+#ifdef PRINT_RESULTS
   printf("Q9 Results: num %d\n", (int)wresult->num_groups);
 
-#ifdef PRINT_RESULTS
   auto& na = db["nation"];
 
   const auto names = &na["n_name"].varchar_data[0];
