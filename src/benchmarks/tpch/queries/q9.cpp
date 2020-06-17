@@ -46,6 +46,28 @@ extern "C" void weld_extract_year(uint32_t* date, uint16_t *result) {
     *result = year;
 }
 
+std::string extractyear(const std::string& var, const std::string& arg, bool native) {
+  std::ostringstream r;
+
+  if (!native) {
+    r << "let " << var << " = cudf[weld_extract_year,i16](" << arg << ")";
+    return r.str();
+  }
+
+  std::string pre = "extractyear_";
+
+  r << "let " << pre << "a = " << arg << " + 32044;";
+  r << "let " << pre << "b = ((4*" << pre << "a) +3)/146097;";
+  r << "let " << pre << "c = " << pre << "a - ((146097* " << pre << "b)/4);";
+  r << "let " << pre << "d = ((4* " << pre << "c) + 3)/1461;";
+  r << "let " << pre << "e = " << pre << "c-((1461*"<<pre<<"d)/4);";
+
+  r << "let " << pre << "m = ((5*" << pre << "e)+2)/153;";
+
+  r << "let " << var << " = i16((100*" << pre << "b) + "<<pre<< "d - 4800 + ("<<pre<<"m/10))";
+  return r.str();
+}
+
 extern "C" void weld_str_like_green(int64_t* xlen, int64_t *xstr,
       bool *result) {
     
@@ -74,7 +96,7 @@ extern "C" void weld_str_print(vec* x,
 
 
 WeldQuery* q9_weld_prepare(Database& db,
-  size_t nrThreads, bool optlookup)
+  size_t nrThreads, bool native_extractyear)
 {
   std::ostringstream program;
 
@@ -216,7 +238,8 @@ WeldQuery* q9_weld_prepare(Database& db,
         << " let cost = e0.$5;"
         << " let a = i64(eprice) * (" << one.value << "l - i64(disc));"
         << " let amount = a - (i64(quant)*i64(cost));"
-        << " let year = cudf[weld_extract_year,i16](e0.$0);"
+        << extractyear("year", "e0.$0", native_extractyear) << ";"
+        // << " let year = cudf[weld_extract_year,i16](e0.$0);"
         << " let name = e0.$4;"
 
         << "merge(b0, {{name, year}, amount})"

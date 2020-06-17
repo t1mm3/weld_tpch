@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
    if (argc > 3) nrThreads = atoi(argv[3]);
 
    std::unordered_set<std::string> q = {"1h", "1v", "1w",
-                                        "3h", "3v", "3w", "3w2",
+                                        "3h", "3v", "3w",
                                         // "5h",  "5v",
                                         "6h", "6v", "6w",
                                         "9h", "9v", "9w" //, "9w2",
@@ -109,20 +109,8 @@ int main(int argc, char* argv[]) {
                        repetitions);
 
    if (q.count("3w")) {
-      auto w = q3_weld_prepare(tpch, nrThreads, true);
+      auto w = q3_weld_prepare(tpch, nrThreads);
       e.timeAndProfile("q3 weld      ", nrTuples(tpch, {"customer", "orders", "lineitem"}),
-                       [&]() {
-                          if (clearCaches) clearOsCaches();
-                          auto result =
-                              q3_weld(tpch, nrThreads, w);
-                          escape(&result);
-                       },
-                       repetitions);
-      delete w;    
-   }
-   if (q.count("3w2")) {
-      auto w = q3_weld_prepare(tpch, nrThreads, false);
-      e.timeAndProfile("q3 weld noopt", nrTuples(tpch, {"customer", "orders", "lineitem"}),
                        [&]() {
                           if (clearCaches) clearOsCaches();
                           auto result =
@@ -204,19 +192,6 @@ int main(int argc, char* argv[]) {
    if (q.count("9w")) {
       auto w = q9_weld_prepare(tpch, nrThreads, true);
       e.timeAndProfile("q9 weld      ", nrTuples(tpch, {"nation", "supplier", "part", "partsupp",
-                                       "lineitem", "orders"}),
-                       [&]() {
-                          if (clearCaches) clearOsCaches();
-                          auto result =
-                              q9_weld(tpch, nrThreads, w);
-                          escape(&result);
-                       },
-                       repetitions);
-      delete w;    
-   }
-   if (q.count("9w2")) {
-      auto w = q9_weld_prepare(tpch, nrThreads, false);
-      e.timeAndProfile("q9 weld noopt", nrTuples(tpch, {"nation", "supplier", "part", "partsupp",
                                        "lineitem", "orders"}),
                        [&]() {
                           if (clearCaches) clearOsCaches();

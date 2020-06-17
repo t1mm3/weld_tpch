@@ -17,8 +17,9 @@ struct WeldConfig {
 
   WeldConfig(size_t threads) {
     value = weld_conf_new();
+    weld_conf_set(value, "weld.memory.limit", "1000000000000"); // 1T
     weld_conf_set(value, "weld.threads", std::to_string(threads).c_str());
-    weld_conf_set(value, "weld.compile.dumpCode", "true");
+    // weld_conf_set(value, "weld.compile.dumpCode", "true");
     // weld_conf_set(value, "weld.compile.enableBoundsChecks", "true");
     // weld_conf_set(value, "weld.llvm.optimization.level", "0");
   }
@@ -133,7 +134,7 @@ q1_weld(runtime::Database& db,
 
 
 WeldQuery* q3_weld_prepare(runtime::Database& db,
-  size_t nrThreads, bool optlookup);
+  size_t nrThreads);
 
 std::unique_ptr<runtime::Query>
 q3_weld(runtime::Database& db,
@@ -152,7 +153,7 @@ q6_weld(runtime::Database& db,
 
 
 WeldQuery* q9_weld_prepare(runtime::Database& db,
-  size_t nrThreads, bool optlookup);
+  size_t nrThreads, bool native_extractyear);
 
 std::unique_ptr<runtime::Query>
 q9_weld(runtime::Database& db,

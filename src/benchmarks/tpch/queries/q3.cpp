@@ -39,7 +39,7 @@ extern "C" void weld_str_eq_building(int64_t* xlen, int64_t *xstr,
 }
 
 WeldQuery* q3_weld_prepare(Database& db,
-  size_t nrThreads, bool optlookup)
+  size_t nrThreads)
 {
 auto c1 = types::Date::castString("1995-03-15");
 auto c2 = types::Date::castString("1995-03-15");
@@ -106,27 +106,15 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
 
   // FK join, but Weld only allows full N join
 
-  if (optlookup) {
-    s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
-      "|b0,i0,e0| let k = e0.$1; let optres = optlookup(ht_custord_res, k);",
-        "if(optres.$0, ",
-          // true
-          "for(optres.$1, b0, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
-          ","
-          // false
-          "b0)",
-      "));"});
-  } else {
-    s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
-    "|b0,i0,e0| let k = e0.$1; ",
-      "if(keyexists(ht_custord_res, k), ",
+  s = mkStr({"let li_proj_res = result(for(", s, ", li_proj, "
+    "|b0,i0,e0| let k = e0.$1; let optres = optlookup(ht_custord_res, k);",
+      "if(optres.$0, ",
         // true
-        "for(lookup(ht_custord_res, k), b0, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
+        "for(optres.$1, b0, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
         ","
         // false
         "b0)",
     "));"});
-  }
   
   program << s;
   program << "let ht_group = dictmerger[{i32, i32, i32}, i64, +];";
