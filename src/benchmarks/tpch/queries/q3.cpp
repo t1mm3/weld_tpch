@@ -62,7 +62,6 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "l_shipdate:vec[i32]"
     << "|";
 
-#if 1
   // TODO: value should be empty, not doesnt seem it's supported by Weld
   program << "let ht_cust = groupmerger[i32, {i32}];";
 
@@ -110,7 +109,9 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     "|b0,i0,e0| let k = e0.$1; let optres = optlookup(ht_custord_res, k);",
       "if(optres.$0, ",
         // true
-        "for(optres.$1, b0, |b1,i1,e1| merge(b1, {e0.$2 * (", std::to_string(one.value), "l - e0.$3), e0.$1, e1.$0, e1.$1 }))"
+        "for(optres.$1, b0, |b1,i1,e1| merge(b1, "
+          << "{e0.$2 * (", std::to_string(one.value), "l - e0.$3), "
+          << "e0.$1, e1.$0, e1.$1 }))"
         ","
         // false
         "b0)",
@@ -125,13 +126,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "));";
 
   program << "tovec(z)";
-#else
-  program << "let ht_group = dictmerger[vec[i8], i32, +];"
-    << "let z = result(for(zip(c_custkey,c_mktsegment), ht_group, |b,i,e| "
-    << "merge(b, {cudf[weld_str_print,vec[i8]](e.$1), e.$0})"
-    << "));";
-  program << "tovec(z)";
-#endif
+
   auto& cu = db["customer"];
   auto& ord = db["orders"];
   auto& li = db["lineitem"];
