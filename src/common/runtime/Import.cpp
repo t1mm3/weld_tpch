@@ -162,6 +162,19 @@ void writeBinary(ColumnConfig& col, std::vector<void*>& data,
 #undef D
 }
 
+bool create_string_dict(runtime::Attribute& attr, const std::string& n) {
+  if (n != "n_name" && n != "r_name") {
+    return false;
+  }
+
+  const size_t num = attr.varchar_data.size();
+  
+  attr.varchar_codes.reserve(num + 4*1024);
+  for (size_t i=0; i<num; i++) {
+    attr.varchar_codes.push_back(i);
+  }
+}
+
 size_t readBinary(runtime::Relation& r, ColumnConfig& col, std::string path) {
 #define D(rt_type)                                                             \
    {                                                                           \
@@ -179,6 +192,7 @@ size_t readBinary(runtime::Relation& r, ColumnConfig& col, std::string path) {
           attr.varchar_data.emplace_back(runtime::varchar(arr, i,              \
             rt_type::get_max_len()));                                          \
         }                                                                      \
+        create_string_dict(attr, col.name);                                    \
       }                                                                        \
       return data.size();                                                      \
    }

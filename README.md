@@ -20,7 +20,8 @@ Download `sandbox.sh` and modify `BASE` (base prefix to use) as well as `N` (num
  * Part of Weld benchmarks [3]
 
 ### Q9
- * GroupBy on string key, not clear how to do that
+ * GroupBy on string key, not clear how to do that, tried but will segfault
+ * We use a string dictionary now
 
 ## References
 * [1] Tim Gubner and Peter Boncz, Exploring Query Execution Strategies for JIT, Vectorization and SIMD, ADMS 2017, https://t1mm3.github.io/assets/papers/adms17.pdf

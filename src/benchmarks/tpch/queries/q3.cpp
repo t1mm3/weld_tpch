@@ -91,7 +91,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     ")"});
 
   s = mkStr({"let ht_custord_res = result(for(", s, ", ht_custord, ",
-    "|b,i,e| merge(ht_custord, { e.$1, {e.$2, e.$3}})));"});
+    "|b,i,e| merge(b, { e.$1, {e.$2, e.$3}})));"});
   program << s;
 
   // materialize probed result to make our lives easier

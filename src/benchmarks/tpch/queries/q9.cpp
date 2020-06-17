@@ -35,7 +35,7 @@ inline void splitJulianDay(unsigned jd, unsigned& year, unsigned& month, unsigne
    year = (100*b) + d - 4800 + (m/10);
 }
 
-extern "C" void weld_extract_year(uint32_t* date, bool *result) {
+extern "C" void weld_extract_year(uint32_t* date, uint16_t *result) {
     
     static_assert(sizeof(char*) == sizeof(int64_t),
       "only works with 64-bit pointers");
@@ -78,8 +78,6 @@ WeldQuery* q9_weld_prepare(Database& db,
 {
   std::ostringstream program;
 
-  program << "tovec(z)";
-
   auto& cu = db["customer"];
   auto& ord = db["orders"];
   auto& li = db["lineitem"];
@@ -88,37 +86,154 @@ WeldQuery* q9_weld_prepare(Database& db,
   auto& part = db["part"];
   auto& partsupp = db["partsupp"];
 
+  const auto one = types::Numeric<12, 2>::castString("1.00");
+
+  program << "|"
+    << "n_nationkey:vec[i32],"
+    << "n_name:vec[i64],"
+    << "s_suppkey:vec[i32],"
+    << "s_nationkey:vec[i32],"
+    << "p_partkey:vec[i32],"
+    << "p_name:vec[{i64,i64}],"
+    << "ps_partkey:vec[i32],"
+    << "ps_suppkey:vec[i32],"
+    << "ps_supplycost:vec[i64],"
+    << "l_orderkey:vec[i32],"
+    << "l_partkey:vec[i32],"
+    << "l_suppkey:vec[i32],"
+    << "l_extendedprice:vec[i64],"
+    << "l_discount:vec[i64],"
+    << "l_quantity:vec[i64],"
+    << "o_orderkey:vec[i32],"
+    << "o_orderdate:vec[i32]"
+    << "|"
+    ;
+
 #if 0
-  n_nationkey
-  n_name
-  s_suppkey
-  s_nationkey
-  p_partkey
-  p_name
-
-  ps_partkey
-  ps_suppkey
-  ps_supplycost
-
-  l_orderkey
-  l_partkey
-  l_suppkey
-  l_extendedprice
-  l_discount
-  l_quantity
-
-  o_orderkey
-  o_orderdate
+  program
+    << "let supplier = zip(s_suppkey, s_nationkey);"
+    << "let part = zip(p_partkey, p_name);"
+    << "let partsupp = zip(ps_partkey, ps_suppkey, ps_supplycost);"
+    << "let lineitem = zip(l_orderkey, l_partkey, l_suppkey, l_extendedprice, l_discount, l_quantity);"
+    << "let orders = zip(o_orderkey, o_orderdate);"
+    ;
 #endif
+  program
+    << "let ht_nation = result(for("
+      << "zip(n_nationkey, n_name), "
+      << "groupmerger[i32, i64], "
+      << " |b0,i0,e0| merge(b0, { e0.$0, e0.$1 })"
+    << "));"
+    ;  
+
+  // FK join, but Weld only allows full N join
+  program
+    // [s_suppkey, n_name]
+    << "let ht_nationsupp = result(for("
+      << "zip(s_suppkey, s_nationkey), "
+      << "groupmerger[i32, i64], "
+      << "|b0,i0,e0| "
+        << "let optres = optlookup(ht_nation, e0.$1);"
+        << "if(optres.$0, "
+          << "for(optres.$1, b0, |b1,i1,e1| merge(b1, {e0.$0, e1}))"
+          << ", b0)"
+    << "));"
+      ;
+
+  // Semi Join doesn't need payload
+  program
+    << "let ht_part = result(for("
+      << "zip(p_partkey, p_name), "
+      << "groupmerger[i32, i32],"
+      << "|b0,i0,e0|"
+        << "let pred = cudf[weld_str_like_green,bool](e0.$1.$0, e0.$1.$1);"
+        << "if(pred, merge(b0, {e0.$0, 1}), b0)"
+    << "));"
+    ;
+  // program << "tovec(part_filtered)";
+
+  // SemiJoin
+  program << "let partpartsupp = filter("
+      << "zip(ps_partkey, ps_suppkey, ps_supplycost),"
+      << "|e0| keyexists(ht_part, e0.$0)"
+    << ");"
+    ;
+
+  // program << "partpartsupp";
+
+  // FK join
+  // ps_partkey, ps_suppkey, n_name, ps_supplycost
+  program << "let ht_nsps = result(for("
+    << "partpartsupp, "
+    << "groupmerger[{i32, i32}, {i64, i64}], "
+    << "|b0,i0,e0|"
+      << "let optres = optlookup(ht_nationsupp, e0.$1);"
+        << "if(optres.$0, "
+          << "for(optres.$1, b0, |b1,i1,e1| merge(b1, { {e0.$0, e0.$1}, { e1, e0.$2 }}))"
+          << ", b0)"
+    << "));"
+    ;
+
+  // program << "tovec(ht_nsps)";
+
+  // [l_orderkey | l_extendedprice, l_discount, l_quantity, n_name, ps_supplycost]
+  program << "let ht_lineitem = result(for("
+    << "zip(l_orderkey, l_partkey, l_suppkey, l_extendedprice, l_discount, l_quantity), "
+    << "groupmerger[i32, {i64,i64,i64,i64,i64}], "
+    << "|b0,i0,e0|"
+      << "let optres = optlookup(ht_nsps, {e0.$1, e0.$2});"
+        << "if(optres.$0, "
+          << "for(optres.$1, b0, |b1,i1,e1| merge(b1, { e0.$0, {e0.$3, e0.$4, e0.$5, e1.$0, e1.$1} }))"
+          << ", b0)"
+    << "));"
+    ;
+
+  // program << "tovec(ht_lineitem)";
+
+
+  // Only non-key join
+    // o_orderdate, l_extendedprice, l_discount, l_quantity, n_name, ps_supplycost
+  program << "let lineorders = result(for("
+    << "zip(o_orderkey, o_orderdate), "
+    << "appender[{i32,i64,i64,i64,i64,i64}], "
+    << "|b0,i0,e0|"
+      << "let optres = optlookup(ht_lineitem, e0.$0);"
+        << "if(optres.$0, "
+          << "for(optres.$1, b0, |b1,i1,e1| merge(b1, { e0.$1, e1.$0, e1.$1, e1.$2, e1.$3, e1.$4}))"
+          << ", b0)"
+    << "));"
+    ;
+
+  // program << "lineorders";
+
+  program << "let aggr = result(for("
+    << "lineorders, "
+    << "dictmerger[{i64, i16}, i64, +], "
+      << "|b0,i0,e0|"
+        << " let eprice = e0.$1;"
+        << " let disc = e0.$2;"
+        << " let quant = e0.$3;"
+        << " let cost = e0.$5;"
+        << " let a = i64(eprice) * (" << one.value << "l - i64(disc));"
+        << " let amount = a - (i64(quant)*i64(cost));"
+        << " let year = cudf[weld_extract_year,i16](e0.$0);"
+        << " let name = e0.$4;"
+
+        << "merge(b0, {{name, year}, amount})"
+    << "));"
+    ;
+
+  program << "tovec(aggr)";
+
   auto inputs = std::make_unique<WeldInRelation>(std::vector<std::pair<size_t, void*>> {
     { na.nrTuples, na["n_nationkey"].data<types::Integer>() },
-    { na.nrTuples, &na["n_name"].varchar_data[0] },
+    { na.nrTuples, &na["n_name"].varchar_codes[0] },
 
     { supp.nrTuples, supp["s_suppkey"].data<types::Integer>()},
     { supp.nrTuples, supp["s_nationkey"].data<types::Integer>()},
 
     { part.nrTuples, part["p_partkey"].data<types::Integer>()},
-    { part.nrTuples, part["p_name"].data<types::Varchar<55>>()},
+    { part.nrTuples, &part["p_name"].varchar_data[0] },
 
     { partsupp.nrTuples, partsupp["ps_partkey"].data<types::Integer>() },
     { partsupp.nrTuples, partsupp["ps_suppkey"].data<types::Integer>() },
@@ -132,7 +247,7 @@ WeldQuery* q9_weld_prepare(Database& db,
     { li.nrTuples, li["l_quantity"].data<types::Numeric<12, 2>>() },
 
     { ord.nrTuples, ord["o_orderkey"].data<types::Integer>() },
-    { ord.nrTuples, ord["o_orderdate"].data<types::Date>() },
+    { ord.nrTuples, ord["o_orderdate"].data<types::Date>() }
   });
 
   return new WeldQuery(nrThreads, program.str(), std::move(inputs));
@@ -147,9 +262,8 @@ std::unique_ptr<runtime::Query> q9_weld(Database& db,
   // translate result
   struct Result {
     struct Group {
-      int32_t k1;
-      int32_t k2;
-      int32_t k3;
+      int64_t name;
+      int16_t year;
       int64_t sum;
     };
 
@@ -158,17 +272,23 @@ std::unique_ptr<runtime::Query> q9_weld(Database& db,
   };
 
   auto wresult = (Result*)weld_value_data(res_val);
+  printf("Q9 Results: num %d\n", (int)wresult->num_groups);
+
 #ifdef PRINT_RESULTS
-  printf("Q3 Results: num %d\n", (int)wresult->num_groups);
+  auto& na = db["nation"];
+
+  const auto names = &na["n_name"].varchar_data[0];
 
   for (size_t i=0; i<wresult->num_groups; i++) {
     auto& grp = wresult->groups[i];
-    printf("%d %d %d %lld\n",
-      grp.k1, grp.k2, grp.k3, grp.sum);
+
+    names[grp.name].print();
+
+    printf(" %d %lld\n",
+      (int)grp.year, grp.sum);
   }
 
 #endif
-
   leaveQuery(nrThreads);
 
   weld_value_free(res_val);

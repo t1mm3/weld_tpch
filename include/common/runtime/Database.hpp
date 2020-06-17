@@ -46,6 +46,12 @@ struct varchar {
       // printf("len=%d arr=%s\n", len, arr);
 #undef LENGTH_IND
    }
+
+   void print() {
+      for (int64_t i=0; i<len; i++) {
+         printf("%c", arr[i]);
+      }
+   }
 };
 
 class Attribute {
@@ -59,6 +65,7 @@ class Attribute {
    std::unique_ptr<Type> type;
 
    std::vector<varchar> varchar_data;
+   std::vector<uint64_t> varchar_codes;
 
    template <typename T> T* data() { return typedAccess<T>().data(); }
    void* data() { return data_.data(); }
