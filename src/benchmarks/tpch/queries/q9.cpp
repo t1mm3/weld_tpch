@@ -56,6 +56,23 @@ extern "C" void weld_str_like_green(int64_t* xlen, int64_t *xstr,
     *result = memmem((char*)(*xstr), *xlen, c1, 5) != nullptr;
 }
 
+
+struct vec {
+  int64_t len;
+  char* data;
+};
+
+extern "C" void weld_str_print(vec* x,
+      vec* result) {
+
+    for (uint16_t i=0; i<x->len; i++) {
+      printf("%c", x->data[i]);
+    }
+    printf("\n");
+}
+
+
+
 WeldQuery* q9_weld_prepare(Database& db,
   size_t nrThreads, bool optlookup)
 {

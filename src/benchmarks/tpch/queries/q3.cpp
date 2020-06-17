@@ -51,7 +51,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
  
   program << "|"
     << "c_custkey:vec[i32],"
-    << "c_mktsegment:vec[{i64,i64}],"
+    << "c_mktsegment:vec[{i64, i64}],"
     << "o_orderdate:vec[i32],"
     << "o_shippriority:vec[i32],"
     << "o_custkey:vec[i32],"
@@ -62,6 +62,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "l_shipdate:vec[i32]"
     << "|";
 
+#if 1
   // TODO: value should be empty, not doesnt seem it's supported by Weld
   program << "let ht_cust = groupmerger[i32, {i32}];";
 
@@ -136,7 +137,13 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     << "));";
 
   program << "tovec(z)";
-
+#else
+  program << "let ht_group = dictmerger[vec[i8], i32, +];"
+    << "let z = result(for(zip(c_custkey,c_mktsegment), ht_group, |b,i,e| "
+    << "merge(b, {cudf[weld_str_print,vec[i8]](e.$1), e.$0})"
+    << "));";
+  program << "tovec(z)";
+#endif
   auto& cu = db["customer"];
   auto& ord = db["orders"];
   auto& li = db["lineitem"];
