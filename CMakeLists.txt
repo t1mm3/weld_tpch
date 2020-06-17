@@ -6,7 +6,7 @@ else()
   set(LINUX )
 endif()
 
-ADD_DEFINITIONS(-g -Werror=deprecated-copy)
+# ADD_DEFINITIONS(-g -Werror=deprecated-copy)
 
 if(LINUX)
 set(CMAKE_C_COMPILER gcc)
@@ -265,20 +265,20 @@ target_link_libraries(run_prim vectorwise common ${TBB_LIBRARIES}  ${JEVENTSLIB}
 # enable_testing()
 set(CTEST_OUTPUT_ON_FAILURE "1")
 
-add_executable(test_all
-  src/test/tpch_expected.cpp
-  src/test/ssb_expected.cpp
-  src/test/tpch.cpp
-  src/test/ssb.cpp
-  src/test/vectorwise/primitives.cpp
-  src/test/vectorwise/Operators.cpp
-  src/test/common/Hashmap.cpp
-  src/test/common/Database.cpp
-  src/test/common/PartitionedDeque.cpp
-  src/test/common/Mmap.cpp
-  src/test/common/runtime/Stack.cpp
-  )
-target_link_libraries(test_all common hyper vectorwise tpch ssb gtest gtest_main)
+#add_executable(test_all
+#  src/test/tpch_expected.cpp
+#  src/test/ssb_expected.cpp
+#  src/test/tpch.cpp
+#  src/test/ssb.cpp
+#  src/test/vectorwise/primitives.cpp
+#  src/test/vectorwise/Operators.cpp
+#  src/test/common/Hashmap.cpp
+#  src/test/common/Database.cpp
+#  src/test/common/PartitionedDeque.cpp
+#  src/test/common/Mmap.cpp
+#  src/test/common/runtime/Stack.cpp
+# )
+#target_link_libraries(test_all common hyper vectorwise tpch ssb gtest gtest_main)
 
 if(HARDWARE_BENCHMARKS)
   add_executable(latency
