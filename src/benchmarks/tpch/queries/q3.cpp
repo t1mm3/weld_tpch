@@ -109,10 +109,10 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
     "|b0,i0,e0| let k = e0.$1; let optres = optlookup(ht_custord_res, k);",
       "if(optres.$0, ",
         // true
-        "for(optres.$1, b0, |b1,i1,e1| merge(b1, "
-          << "{e0.$2 * (", std::to_string(one.value), "l - e0.$3), "
-          << "e0.$1, e1.$0, e1.$1 }))"
-        ","
+        "for(optres.$1, b0, |b1,i1,e1| merge(b1, ",
+          "{e0.$2 * (", std::to_string(one.value), "l - e0.$3), ",
+          "e0.$1, e1.$0, e1.$1 }))",
+        ",",
         // false
         "b0)",
     "));"});
