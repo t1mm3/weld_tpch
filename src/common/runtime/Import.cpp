@@ -168,11 +168,14 @@ bool create_string_dict(runtime::Attribute& attr, const std::string& n) {
   }
 
   const size_t num = attr.varchar_data.size();
-  
+
+  printf("create dictionary for %s\n", n.c_str());  
   attr.varchar_codes.reserve(num + 4*1024);
   for (size_t i=0; i<num; i++) {
     attr.varchar_codes.push_back(i);
   }
+
+  return true;
 }
 
 size_t readBinary(runtime::Relation& r, ColumnConfig& col, std::string path) {
