@@ -56,10 +56,10 @@ int main(int argc, char* argv[]) {
    if (argc > 3) nrThreads = atoi(argv[3]);
 
    std::unordered_set<std::string> q = {//"1h", "1v", "1w",
-                                        //"3h", "3v", "3w", "3w2",
+                                        "3h", "3v", "3w", "3w2",
                                         // "5h",  "5v",
-                                        // "6h", "6v", "6w",
-                                        "9h", "9v", "9w", "9w2",
+                                        "6h", "6v", "6w",
+                                        "9h", "9v", // "9w", "9w2",
                                          // "18h", "18v"
                                       };
 
@@ -78,6 +78,18 @@ int main(int argc, char* argv[]) {
    }
 
    tbb::task_scheduler_init scheduler(nrThreads);
+   if (q.count("1w")) {
+      auto w = q1_weld_prepare(tpch, nrThreads);
+      e.timeAndProfile("q1 weld      ", nrTuples(tpch, {"lineitem"}),
+                       [&]() {
+                          if (clearCaches) clearOsCaches();
+                          auto result =
+                              q1_weld(tpch, nrThreads, w);
+                          escape(&result);
+                       },
+                       repetitions);
+      delete w;    
+   }
    if (q.count("1h"))
       e.timeAndProfile("q1 hyper     ", nrTuples(tpch, {"lineitem"}),
                        [&]() {
@@ -95,18 +107,6 @@ int main(int argc, char* argv[]) {
                           escape(&result);
                        },
                        repetitions);
-   if (q.count("1w")) {
-      auto w = q1_weld_prepare(tpch, nrThreads);
-      e.timeAndProfile("q1 weld      ", nrTuples(tpch, {"lineitem"}),
-                       [&]() {
-                          if (clearCaches) clearOsCaches();
-                          auto result =
-                              q1_weld(tpch, nrThreads, w);
-                          escape(&result);
-                       },
-                       repetitions);
-      delete w;    
-   }
 
    if (q.count("3w")) {
       auto w = q3_weld_prepare(tpch, nrThreads, true);

@@ -46,7 +46,7 @@ extern "C" void weld_extract_year(uint32_t* date, bool *result) {
     *result = year;
 }
 
-extern "C" void weld_str_like_green(uint16_t* xlen, int64_t *xstr,
+extern "C" void weld_str_like_green(int64_t* xlen, int64_t *xstr,
       bool *result) {
     
     static_assert(sizeof(char*) == sizeof(int64_t),

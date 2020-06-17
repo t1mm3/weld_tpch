@@ -15,8 +15,9 @@ using algebra::Type;
 
 namespace runtime {
 
+// Make varchar also match a Weld vector
 struct varchar {
-  uint16_t len;
+  int64_t len;
   const char* arr;
 
    varchar() {

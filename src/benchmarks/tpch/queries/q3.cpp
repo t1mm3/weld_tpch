@@ -16,17 +16,17 @@ using namespace std;
 using vectorwise::primitives::Char_10;
 using vectorwise::primitives::hash_t;
 
-extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
+extern "C" void weld_str_eq_building(int64_t* xlen, int64_t *xstr,
       bool *result) {
     
     static_assert(sizeof(char*) == sizeof(int64_t),
       "only works with 64-bit pointers");
 
     const char* c1 = "BUILDING";
-    uint16_t l1 = 8;
+    int64_t l1 = 8;
     char* str = (char*)(*xstr);
 
-    uint16_t len = std::min(l1, *xlen);
+    int64_t len = std::min(l1, *xlen);
 #if 0
     for (uint16_t i=0; i<len; i++) {
       printf("%c", str[i]);
@@ -51,7 +51,7 @@ const auto zero = types::Numeric<12, 4>::castString("0.00");
  
   program << "|"
     << "c_custkey:vec[i32],"
-    << "c_mktsegment:vec[{i16,i64}],"
+    << "c_mktsegment:vec[{i64,i64}],"
     << "o_orderdate:vec[i32],"
     << "o_shippriority:vec[i32],"
     << "o_custkey:vec[i32],"
@@ -187,11 +187,13 @@ std::unique_ptr<runtime::Query> q3_weld(Database& db,
 #ifdef PRINT_RESULTS
   printf("Q3 Results: num %d\n", (int)wresult->num_groups);
 
+#if 0
   for (size_t i=0; i<wresult->num_groups; i++) {
     auto& grp = wresult->groups[i];
     printf("%d %d %d %lld\n",
       grp.k1, grp.k2, grp.k3, grp.sum);
   }
+#endif
 
 #endif
 

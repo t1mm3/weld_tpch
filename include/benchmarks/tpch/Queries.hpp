@@ -18,6 +18,9 @@ struct WeldConfig {
   WeldConfig(size_t threads) {
     value = weld_conf_new();
     weld_conf_set(value, "weld.threads", std::to_string(threads).c_str());
+    weld_conf_set(value, "weld.compile.dumpCode", "true");
+    // weld_conf_set(value, "weld.compile.enableBoundsChecks", "true");
+    // weld_conf_set(value, "weld.llvm.optimization.level", "0");
   }
 
   ~WeldConfig() {
@@ -65,15 +68,6 @@ private:
 
 #include <sstream>
 
-
-extern "C" void weld_str_eq_building(uint16_t* xlen, int64_t *xstr,
-      bool *result);
-
-extern "C" void weld_str_like_green(uint16_t* xlen, int64_t *xstr,
-      bool *result);
-
-extern "C" void weld_extract_year(uint32_t* date, bool *result);
-
 struct WeldQuery {
   weld_module_t module;
   WeldConfig config;
@@ -84,6 +78,7 @@ struct WeldQuery {
       std::unique_ptr<WeldInRelation>&& input) : config(threads), input(std::move(input)) {
     weld_error_t err = weld_error_new();
     module = weld_module_compile(q.c_str(), config.value, err);
+    printf("threads %d %s\n", (int)threads, weld_conf_get(config.value, "weld.threads"));
     if (weld_error_code(err)) {
       const char *msg = weld_error_message(err);
       printf("Error message: %s\n", msg);
@@ -91,23 +86,28 @@ struct WeldQuery {
     }
     weld_error_free(err);
 
-    context = weld_context_new(config.value);
+    
   }
 
   ~WeldQuery() {
-    weld_context_free(context);
     weld_module_free(module);
   }
 
   weld_value_t run(size_t threads) {
+    WeldConfig cfg(threads);
+    auto context = weld_context_new(cfg.value);
+    printf("threads %d\n", (int)threads);
     weld_error_t err = weld_error_new();
     auto r = weld_module_run(module, context, input ? input->value : nullptr, err);
     if (weld_error_code(err)) {
       const char *msg = weld_error_message(err);
       printf("Error message: %s\n", msg);
+      weld_context_free(context);
       exit(1);
     }
     weld_error_free(err);
+    weld_context_free(context);
+
     return r;
   }
 };
